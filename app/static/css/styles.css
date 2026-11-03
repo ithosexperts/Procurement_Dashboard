@@ -1,21 +1,213 @@
-/* ── Procurement Dashboard – Base Styles ─────────────────────── */
+/* ── Procurement Dashboard – Professional Corporate Styles ───────────── */
+
+:root {
+    --brand-primary: #1e3a8a;
+    --brand-secondary: #0f766e;
+    --brand-dark: #0f172a;
+    --brand-accent: #f59e0b;
+    --bg-surface: #ffffff;
+    --bg-page: #f8fafc;
+    --border-color: #e2e8f0;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+}
 
 body {
-    background-color: #f8f9fa;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                 "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
 }
 
+/* Navbar */
 .navbar-brand {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
+    letter-spacing: -0.01em;
 }
 
-.card {
-    border: none;
+/* Top Action Bar & Control Stages */
+.stage-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.stage-badge {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+/* Segmented Control Buttons */
+.btn-group-toggle .btn {
+    font-size: 0.825rem;
+    font-weight: 500;
+    padding: 0.35rem 0.75rem;
+}
+
+.btn-check:checked + .btn-outline-primary {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: #fff;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.btn-check:checked + .btn-outline-secondary {
+    background-color: #475569;
+    border-color: #475569;
+    color: #fff;
+}
+
+/* Prompt Gate Container */
+#selectionPromptCard {
+    background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+    border: 1px dashed #93c5fd;
+    border-radius: 0.75rem;
+}
+
+/* Filter Sidebar / Accordion */
+.filter-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     border-radius: 0.5rem;
 }
 
-.card-body h2 {
-    font-weight: 700;
+.filter-section-header .accordion-button {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--brand-dark);
+    padding: 0.65rem 0.85rem;
+    background-color: #f8fafc;
 }
 
+.filter-section-header .accordion-button:not(.collapsed) {
+    background-color: #f1f5f9;
+    color: var(--brand-primary);
+    box-shadow: none;
+}
+
+.filter-group {
+    margin-bottom: 0.75rem;
+}
+
+.filter-group-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.filter-select {
+    font-size: 0.8rem;
+    max-height: 120px;
+}
+
+.filter-select option.stale-option {
+    color: #94a3b8;
+    background-color: #f8fafc;
+}
+
+/* Chart Cards */
+.chart-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.chart-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+}
+
+.chart-card-header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.65rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chart-card-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--brand-dark);
+    margin: 0;
+}
+
+.chart-container-horizontal {
+    position: relative;
+    max-height: 380px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.75rem;
+}
+
+.chart-container-vertical {
+    position: relative;
+    height: 340px;
+    padding: 0.75rem;
+}
+
+/* Detail Table */
+.detail-table-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.detail-table th {
+    font-size: 0.775rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+}
+
+.detail-table th:hover {
+    background-color: #1e293b !important;
+}
+
+.detail-table td {
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.detail-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.sort-icon {
+    font-size: 0.7rem;
+    margin-left: 0.25rem;
+    opacity: 0.6;
+}
+
+/* Loading Overlay */
+#loadingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}

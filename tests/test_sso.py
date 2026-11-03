@@ -94,3 +94,4 @@ def test_session_cookie_roundtrip():
     assert claims["employee_code"] == "EMP042"
     assert claims["session_id"] == "portal-sess-99"
     assert claims["target_database"] == "OperationsDB"
+

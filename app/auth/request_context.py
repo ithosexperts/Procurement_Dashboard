@@ -73,3 +73,4 @@ def reset_current_database_target(token: Token) -> None:
 
 def get_current_database_target() -> str | None:
     return _current_database_target.get()
+
