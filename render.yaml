@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: procurement-dashboard
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: ENVIRONMENT
+        value: "production"
+      - key: APP_NAME
+        value: "Procurement Dashboard"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: API_BASE_URL
+        value: "https://api.hosexperts.com:85/apiv2.php"
+      - key: API_DATABASE
+        value: "OperationsDB"
+      - key: API_AUTH_TOKEN
+        sync: false
+      - key: API_USERNAME
+        sync: false
+      - key: API_PASSWORD
+        sync: false
+      - key: ONE_PORTAL_AUTH_ENABLED
+        value: "true"
+      - key: ONE_PORTAL_IDENTITY_CAPTURE_ENABLED
+        value: "true"
+      - key: SSO_BASE_URL
+        value: "https://accounts.hosexperts.com"
+      - key: PROCUREMENT_SSO_SECRET
+        sync: false
+      - key: SSO_TICKET_AUDIENCE
+        value: "procurement-dashboard"
+      - key: SSO_SESSION_MINUTES
+        value: "480"
+      - key: SSO_COOKIE_SAMESITE
+        value: "lax"

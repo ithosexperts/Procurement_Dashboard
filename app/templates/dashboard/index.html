@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Procurement Overview{% endblock %}
+
+{% block content %}
+<!-- Top Header / Meta Row -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h3 class="fw-bold mb-1">Procurement Dashboard – Overview</h3>
+        <p class="text-muted small mb-0">
+            <i class="bi bi-clock-history me-1"></i> Data as of: <strong>{{ data_as_of or 'Live' }}</strong>
+            <span class="mx-2">&bull;</span>
+            <i class="bi bi-database me-1"></i> Database: <strong>{{ database }}</strong>
+            <span class="mx-2">&bull;</span>
+            <i class="bi bi-table me-1"></i> View: <strong>VD_Procurement_Dashboard</strong>
+        </p>
+    </div>
+    <div class="mt-2 mt-sm-0">
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload();">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh Data
+        </button>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger shadow-sm d-flex align-items-center" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+    <div>
+        <strong>API Gateway Error:</strong> {{ error }}
+        <div class="small mt-1 text-secondary">Verify API credentials, database target, and network availability.</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Primary KPI Cards Row -->
+<div class="row g-3 mb-4">
+    <!-- Total Spend KPI -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0 border-start border-success border-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Total Procurement Spend</span>
+                        <h2 class="fw-bold text-success mb-0 mt-1" id="kpiTotalSpend">
+                            {{ total_spend_formatted }}
+                        </h2>
+                        <small class="text-muted">Net Spend in INR &bull; Credit Memos Retained</small>
+                    </div>
+                    <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle">
+                        <i class="bi bi-currency-rupee fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Records KPI -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0 border-start border-primary border-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Total Source Records</span>
+                        <h2 class="fw-bold text-primary mb-0 mt-1" id="kpiTotalRecords">
+                            {{ "{:,}".format(record_count) }}
+                        </h2>
+                        <small class="text-muted">AP Invoices &amp; AP Credit Memos</small>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+                        <i class="bi bi-receipt-cutoff fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Gateway Status KPI -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0 border-start border-info border-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Company API Gateway</span>
+                        <h4 class="fw-bold text-dark mb-0 mt-1">Connected &amp; Validated</h4>
+                        <small class="text-success"><i class="bi bi-check-circle-fill me-1"></i> apiv2.php &bull; {{ database }}</small>
+                    </div>
+                    <div class="bg-info bg-opacity-10 text-info p-3 rounded-circle">
+                        <i class="bi bi-hdd-network fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Milestone 1 Status & Business Rules Grid -->
+<div class="row g-4 mb-4">
+    <!-- Milestone 1 Checklist -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 border-0">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-check2-circle text-success me-2"></i>Milestone 1 Deliverables Checklist
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>1. Working FastAPI Application</span>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Complete</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>2. Health-check Endpoints (/health, /healthz)</span>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Complete</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>3. Basic Company SSO Integration Structure</span>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Complete</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>4. Company API Client (apiv2.php)</span>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Complete</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>5. Procurement Data Service</span>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Complete</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>6. API Connection Test (test_api.py)</span>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Complete</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>7. Data Retrieval from VD_Procurement_Dashboard</span>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Complete</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>8. JSON Response Validation</span>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Complete</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>9. Record Count Display</span>
+                        <span class="badge bg-primary">{{ "{:,}".format(record_count) }} rows</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>10. Total Procurement Spend Calculation</span>
+                        <span class="badge bg-success">{{ total_spend_formatted }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                        <span>11. Data as of Timestamp</span>
+                        <span class="badge bg-info text-dark">ISO-8601 UTC</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Business Data Rules Reference -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 border-0">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-shield-check text-primary me-2"></i>Business Data Rules Enforced
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <div class="p-3 mb-2 bg-light rounded small">
+                    <div class="fw-semibold text-dark"><i class="bi bi-dot text-primary fs-5"></i> Spend Formula:</div>
+                    <div class="text-muted ms-3">Spend = <code>Row Total (After Doc Disc)</code> directly from SQL view.</div>
+                </div>
+                <div class="p-3 mb-2 bg-light rounded small">
+                    <div class="fw-semibold text-dark"><i class="bi bi-dot text-primary fs-5"></i> Credit Memos:</div>
+                    <div class="text-muted ms-3">Credit memos retain negative spend values (no <code>abs()</code> transformation applied).</div>
+                </div>
+                <div class="p-3 mb-2 bg-light rounded small">
+                    <div class="fw-semibold text-dark"><i class="bi bi-dot text-primary fs-5"></i> Quantity Separation:</div>
+                    <div class="text-muted ms-3">Quantities are isolated and analysed strictly by Unit of Measure (UoM).</div>
+                </div>
+                <div class="p-3 mb-2 bg-light rounded small">
+                    <div class="fw-semibold text-dark"><i class="bi bi-dot text-primary fs-5"></i> Currency &amp; Exclusions:</div>
+                    <div class="text-muted ms-3">Currency is in INR. GST and header freight are excluded in the source view.</div>
+                </div>
+                <div class="p-3 bg-light rounded small">
+                    <div class="fw-semibold text-dark"><i class="bi bi-dot text-primary fs-5"></i> Source Preservation:</div>
+                    <div class="text-muted ms-3">No independent recalculation or modification of source business rules.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quantity by UoM Breakdown (Sample Analysis) -->
+{% if uom_summary %}
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-pie-chart-fill text-warning me-2"></i>Quantity Analysis by Unit of Measure (Sample Records)
+                </h6>
+                <span class="badge bg-secondary">Rule 7: Analyzed Separately by UoM</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Unit of Measure (UoM)</th>
+                                <th class="text-end">Total Sample Quantity</th>
+                                <th class="text-end">Record Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in uom_summary %}
+                            <tr>
+                                <td class="fw-semibold"><span class="badge bg-light text-dark border">{{ row.uom }}</span></td>
+                                <td class="text-end font-monospace">{{ "{:,.2f}".format(row.total_quantity) }}</td>
+                                <td class="text-end font-monospace">{{ row.record_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Source Data Preview Table -->
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-table text-primary me-2"></i>Source Data Preview – VD_Procurement_Dashboard
+                </h6>
+                <span class="badge bg-light text-dark border">Showing {{ sample_records|length }} Sample Rows</span>
+            </div>
+            <div class="card-body p-0">
+                {% if sample_records %}
+                <div class="table-responsive" style="max-height: 480px;">
+                    <table class="table table-hover table-bordered table-sm align-middle mb-0" style="font-size: 0.8rem;">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th>DocNum</th>
+                                <th>Document</th>
+                                <th>Document Type</th>
+                                <th>Posting Date</th>
+                                <th>BP Name</th>
+                                <th>Item Code</th>
+                                <th>Item Name</th>
+                                <th class="text-end">Quantity</th>
+                                <th>UoM</th>
+                                <th class="text-end">Row Total (After Doc Disc)</th>
+                                <th>Row Buyer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in sample_records %}
+                            <tr>
+                                <td class="fw-bold">{{ rec.DocNum }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'primary' if rec.Document == 'AP Invoice' else 'warning text-dark' }}">
+                                        {{ rec.Document }}
+                                    </span>
+                                </td>
+                                <td>{{ rec.get('Document Type') }}</td>
+                                <td class="text-nowrap">{{ (rec.get('Posting Date') or '').split(' ')[0] }}</td>
+                                <td class="text-truncate" style="max-width: 180px;" title="{{ rec.get('BP Name') }}">{{ rec.get('BP Name') }}</td>
+                                <td>{{ rec.get('Item Code') or '-' }}</td>
+                                <td class="text-truncate" style="max-width: 200px;" title="{{ rec.get('Item Name') }}">{{ rec.get('Item Name') or '-' }}</td>
+                                <td class="text-end font-monospace">{{ "{:,.2f}".format(rec.Quantity|float) if rec.Quantity else '-' }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ rec.UoM or '-' }}</span></td>
+                                <td class="text-end font-monospace fw-semibold {{ 'text-danger' if (rec.get('Row Total (After Doc Disc)')|float) < 0 else 'text-dark' }}">
+                                    ₹{{ "{:,.2f}".format(rec.get('Row Total (After Doc Disc)')|float) }}
+                                </td>
+                                <td>{{ rec.get('Row Buyer') or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <p class="mb-0">No records loaded.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
