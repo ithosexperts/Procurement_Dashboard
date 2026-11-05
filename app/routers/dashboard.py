@@ -99,6 +99,7 @@ async def procurement_query_api(
     page_size = int(payload.get("page_size", 50))
     sort_column = payload.get("sort_column", "Posting Date")
     sort_direction = payload.get("sort_direction", "desc")
+    intent = payload.get("intent", "all")
 
     result = await query_procurement_data(
         granularity=granularity,
@@ -109,6 +110,7 @@ async def procurement_query_api(
         page_size=page_size,
         sort_column=sort_column,
         sort_direction=sort_direction,
+        intent=intent,
     )
 
     return JSONResponse(result)

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -55,7 +56,8 @@ app.add_middleware(OnePortalAuthMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 # ── Static Files ───────────────────────────────────────────────
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # ── Routers ────────────────────────────────────────────────────
 app.include_router(sso.router)

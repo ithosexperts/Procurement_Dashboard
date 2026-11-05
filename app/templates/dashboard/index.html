@@ -36,81 +36,76 @@
     </div>
 </div>
 
-<!-- Stage 1 & Stage 2 Control Panel -->
-<div class="card stage-card mb-4 border-0 shadow-sm">
-    <div class="card-body p-3">
-        <div class="row g-3 align-items-center">
-            <!-- Stage 1: Granularity & Measure -->
-            <div class="col-lg-7">
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                    <span class="badge bg-primary text-white stage-badge">Stage 1</span>
-                    
-                    <!-- Granularity Selector -->
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="small fw-bold text-muted text-uppercase mb-0">Granularity:</label>
-                        <div class="btn-group btn-group-sm btn-group-toggle" role="group" id="granularityGroup">
-                            <input type="radio" class="btn-check" name="granularity" id="granDaily" value="Daily" autocomplete="off">
-                            <label class="btn btn-outline-primary" for="granDaily">Daily</label>
+<!-- Granularity Selection Controls -->
+<div class="card selection-card stage-card mb-4 border-0 shadow-sm">
+    <div class="card-body p-3 p-lg-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h5 class="granularity-header mb-0">GRANULARITY</h5>
+            <button id="btnResetGranularity" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm" type="button" title="Reset Period, Measure and Date Basis selections">
+                <i class="bi bi-arrow-counterclockwise"></i>
+                <span>Reset Granularity</span>
+            </button>
+        </div>
 
-                            <input type="radio" class="btn-check" name="granularity" id="granWeekly" value="Weekly" autocomplete="off">
-                            <label class="btn btn-outline-primary" for="granWeekly">Weekly</label>
+        <div class="d-flex flex-wrap align-items-center gap-4 gap-xl-5">
+            <!-- Period / Granularity selector -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <label class="selection-group-label">PERIOD:</label>
+                <div class="btn-group btn-group-sm btn-group-toggle" role="group" id="granularityGroup" aria-label="Period granularity">
+                    <input type="radio" class="btn-check" name="granularity" id="granDaily" value="Daily" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="granDaily">Daily</label>
 
-                            <input type="radio" class="btn-check" name="granularity" id="granMonthly" value="Monthly" autocomplete="off">
-                            <label class="btn btn-outline-primary" for="granMonthly">Monthly</label>
+                    <input type="radio" class="btn-check" name="granularity" id="granWeekly" value="Weekly" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="granWeekly">Weekly</label>
 
-                            <input type="radio" class="btn-check" name="granularity" id="granYearly" value="Yearly" autocomplete="off">
-                            <label class="btn btn-outline-primary" for="granYearly">Yearly</label>
-                        </div>
-                    </div>
+                    <input type="radio" class="btn-check" name="granularity" id="granMonthly" value="Monthly" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="granMonthly">Monthly</label>
 
-                    <!-- Measure Selector -->
-                    <div class="d-flex align-items-center gap-2 ms-lg-2">
-                        <label class="small fw-bold text-muted text-uppercase mb-0">Measure:</label>
-                        <div class="btn-group btn-group-sm btn-group-toggle" role="group" id="measureGroup">
-                            <input type="radio" class="btn-check" name="measure" id="measSpend" value="Spend" autocomplete="off">
-                            <label class="btn btn-outline-primary" for="measSpend"><i class="bi bi-currency-rupee me-1"></i>Spend</label>
-
-                            <input type="radio" class="btn-check" name="measure" id="measQuantity" value="Quantity" autocomplete="off">
-                            <label class="btn btn-outline-primary" for="measQuantity"><i class="bi bi-boxes me-1"></i>Quantity</label>
-                        </div>
-                    </div>
+                    <input type="radio" class="btn-check" name="granularity" id="granYearly" value="Yearly" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="granYearly">Yearly</label>
                 </div>
             </div>
 
-            <!-- Stage 2: Date Basis -->
-            <div class="col-lg-5 border-start-lg">
-                <div class="d-flex flex-wrap align-items-center gap-3 ps-lg-2">
-                    <span class="badge bg-secondary text-white stage-badge">Stage 2</span>
-                    <label class="small fw-bold text-muted text-uppercase mb-0">Date Basis:</label>
-                    <div class="btn-group btn-group-sm btn-group-toggle" role="group" id="dateBasisGroup">
-                        <input type="radio" class="btn-check" name="dateBasis" id="basisPostingDate" value="Posting Date" autocomplete="off">
-                        <label class="btn btn-outline-secondary" for="basisPostingDate"><i class="bi bi-calendar-event me-1"></i>Posting Date</label>
+            <!-- Measure selector -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <label class="selection-group-label">MEASURE:</label>
+                <div class="btn-group btn-group-sm btn-group-toggle" role="group" id="measureGroup" aria-label="Measure">
+                    <input type="radio" class="btn-check" name="measure" id="measSpend" value="Spend" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="measSpend"><i class="bi bi-currency-rupee me-1"></i>Spend</label>
 
-                        <input type="radio" class="btn-check" name="dateBasis" id="basisVendorDocDate" value="Vendor's Doc Date" autocomplete="off">
-                        <label class="btn btn-outline-secondary" for="basisVendorDocDate"><i class="bi bi-file-earmark-text me-1"></i>Vendor's Doc Date</label>
-                    </div>
+                    <input type="radio" class="btn-check" name="measure" id="measQuantity" value="Quantity" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="measQuantity"><i class="bi bi-boxes me-1"></i>Quantity</label>
+                </div>
+            </div>
+
+            <!-- Date basis selector -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <label class="selection-group-label">DATE BASIS:</label>
+                <div class="btn-group btn-group-sm btn-group-toggle" role="group" id="dateBasisGroup" aria-label="Date basis">
+                    <input type="radio" class="btn-check" name="dateBasis" id="basisPostingDate" value="Posting Date" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="basisPostingDate"><i class="bi bi-calendar-event me-1"></i>Posting Date</label>
+
+                    <input type="radio" class="btn-check" name="dateBasis" id="basisVendorDocDate" value="Vendor's Doc Date" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="basisVendorDocDate"><i class="bi bi-file-earmark-text me-1"></i>Vendor's Doc Date</label>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Selection Gating Prompt (FL3: Shown when Stage 1 and/or Stage 2 are not selected) -->
-<div id="selectionPromptCard" class="card p-5 text-center my-5 shadow-sm">
-    <div class="card-body">
-        <div class="mb-3 text-primary">
-            <i class="bi bi-sliders2-vertical" style="font-size: 3.5rem;"></i>
+<!-- Refined Empty-State / Welcome Panel -->
+<div id="selectionPromptCard" class="card welcome-panel text-center my-4 py-4 px-3 px-md-5">
+    <div class="card-body p-2">
+        <div class="welcome-icon-box mb-3">
+            <i class="bi bi-bar-chart-line"></i>
         </div>
-        <h4 class="fw-bold text-dark mb-2">Select Granularity, Measure and Date Basis to Begin</h4>
-        <p class="text-muted mx-auto" style="max-width: 580px;">
-            In accordance with <strong>Rule FL3</strong>, charts and table data remain hidden until you make both 
-            <strong>Stage 1</strong> (Granularity &amp; Measure) and <strong>Stage 2</strong> (Date Basis) selections above.
+        <h4 class="welcome-heading mb-2">Explore Your Procurement Performance</h4>
+        <p class="welcome-subtitle mx-auto mb-2" style="max-width: 620px;">
+            Select a period, measure and date basis to discover meaningful insights into your procurement activities.
         </p>
-        <div class="d-flex justify-content-center gap-2 mt-3">
-            <span class="badge bg-light text-primary border px-3 py-2">Step 1: Choose Daily, Weekly, Monthly or Yearly</span>
-            <span class="badge bg-light text-primary border px-3 py-2">Step 2: Choose Spend or Quantity</span>
-            <span class="badge bg-light text-secondary border px-3 py-2">Step 3: Choose Posting or Vendor Doc Date</span>
-        </div>
+        <p class="welcome-supporting mx-auto mb-0" style="max-width: 580px;">
+            Analyse purchasing trends, monitor vendor spend and explore procurement patterns across your business.
+        </p>
     </div>
 </div>
 
@@ -132,26 +127,43 @@
         <!-- Left Filter Panel (Col 3 on xl, Col 4 on lg) -->
         <div class="col-xl-3 col-lg-4" id="filterSidebarCol">
             <div class="filter-panel shadow-sm sticky-top" style="top: 80px; z-index: 100;">
-                <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white rounded-top">
-                    <span class="fw-bold text-dark fs-6"><i class="bi bi-funnel me-1 text-primary"></i> Filter Options</span>
-                    <span class="badge bg-light text-secondary border" id="activeFilterBadge">0 active</span>
+                
+                <!-- Active Filters Top Summary Panel (FT10, FT11) -->
+                <div class="active-filters-panel p-3 border-bottom bg-white rounded-top">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-funnel text-primary"></i>
+                            <span class="fw-bold text-dark" style="font-size: 0.875rem;">Active Filters</span>
+                            <span class="badge rounded-pill bg-light text-secondary border" id="activeFilterBadge">0</span>
+                        </div>
+                        <button type="button" class="btn btn-link btn-xs text-danger text-decoration-none p-0 fw-semibold" id="btnClearAllFilters" style="display: none; font-size: 0.775rem;">
+                            Clear All
+                        </button>
+                    </div>
+                    <!-- Removable active filter chips -->
+                    <div id="activeFilterChipsContainer" class="d-flex flex-wrap gap-1 mt-2" style="display: none;"></div>
                 </div>
 
                 <!-- 8 Collapsible Filter Sections (FT1-1 to FT1-8) -->
-                <div class="accordion accordion-flush" id="filterAccordion" style="max-height: calc(100vh - 160px); overflow-y: auto;">
+                <div class="accordion accordion-flush filter-accordion" id="filterAccordion" style="max-height: calc(100vh - 180px); overflow-y: auto;">
                     
                     <!-- 1. Period (FT1-1) -->
                     <div class="accordion-item filter-section-header">
                         <h2 class="accordion-header" id="headingPeriod">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePeriod" aria-expanded="true">
-                                <i class="bi bi-calendar3 me-2 text-primary"></i> 1. Period
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePeriod" aria-expanded="false">
+                                <i class="bi bi-calendar3 me-2 text-primary"></i>
+                                <span>1. Period</span>
+                                <span class="badge rounded-pill bg-primary ms-auto me-2 section-active-badge" id="badge_section_1" style="display: none;">0</span>
                             </button>
                         </h2>
-                        <div id="collapsePeriod" class="accordion-collapse collapse show" data-bs-parent="#filterAccordion">
+                        <div id="collapsePeriod" class="accordion-collapse collapse" data-bs-parent="#filterAccordion">
                             <div class="accordion-body p-3">
                                 <!-- Calendar From/To (FT8: Calendar picker only, no typing) -->
-                                <div class="filter-group mb-2">
-                                    <label class="filter-group-label">Date Range (Calendar)</label>
+                                <div class="filter-group mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="filter-group-label mb-0">Date Range (Calendar)</label>
+                                        <button type="button" class="filter-clear-link" id="btnClearDateRange" style="display: none;">Clear</button>
+                                    </div>
                                     <div class="row g-1">
                                         <div class="col-6">
                                             <input type="date" id="filterFromDate" class="form-control form-control-sm" title="From Date" onkeydown="return false">
@@ -162,24 +174,24 @@
                                     </div>
                                 </div>
                                 <!-- Year Filter -->
-                                <div class="filter-group" id="filterGroupYear">
+                                <div class="filter-group mb-2" id="filterGroupYear" data-key="year" data-label="Year" data-target="filterYear">
                                     <label class="filter-group-label" for="filterYear">Year</label>
-                                    <select id="filterYear" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterYear" class="d-none" multiple></select>
                                 </div>
                                 <!-- Month Filter (FT2: Monthly, Weekly, Daily) -->
-                                <div class="filter-group" id="filterGroupMonth">
+                                <div class="filter-group mb-2" id="filterGroupMonth" data-key="month" data-label="Month" data-target="filterMonth">
                                     <label class="filter-group-label" for="filterMonth">Month</label>
-                                    <select id="filterMonth" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterMonth" class="d-none" multiple></select>
                                 </div>
                                 <!-- Week Filter (FT2: Weekly, Daily) -->
-                                <div class="filter-group" id="filterGroupWeek">
+                                <div class="filter-group mb-2" id="filterGroupWeek" data-key="week" data-label="Week" data-target="filterWeek">
                                     <label class="filter-group-label" for="filterWeek">Week</label>
-                                    <select id="filterWeek" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterWeek" class="d-none" multiple></select>
                                 </div>
                                 <!-- Day Filter (FT2: Daily only) -->
-                                <div class="filter-group" id="filterGroupDay">
+                                <div class="filter-group mb-2" id="filterGroupDay" data-key="day" data-label="Day of Week" data-target="filterDay">
                                     <label class="filter-group-label" for="filterDay">Day of Week</label>
-                                    <select id="filterDay" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterDay" class="d-none" multiple></select>
                                 </div>
                             </div>
                         </div>
@@ -188,27 +200,29 @@
                     <!-- 2. Document & Terms (FT1-2) -->
                     <div class="accordion-item filter-section-header">
                         <h2 class="accordion-header" id="headingDocTerms">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDocTerms">
-                                <i class="bi bi-file-earmark-text me-2 text-primary"></i> 2. Document &amp; Terms
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDocTerms" aria-expanded="false">
+                                <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+                                <span>2. Document &amp; Terms</span>
+                                <span class="badge rounded-pill bg-primary ms-auto me-2 section-active-badge" id="badge_section_2" style="display: none;">0</span>
                             </button>
                         </h2>
                         <div id="collapseDocTerms" class="accordion-collapse collapse" data-bs-parent="#filterAccordion">
                             <div class="accordion-body p-3">
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="document" data-label="Document" data-target="filterDocument">
                                     <label class="filter-group-label" for="filterDocument">Document</label>
-                                    <select id="filterDocument" class="form-select form-select-sm filter-select" multiple size="2"></select>
+                                    <select id="filterDocument" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="documentType" data-label="Document Type" data-target="filterDocumentType">
                                     <label class="filter-group-label" for="filterDocumentType">Document Type</label>
-                                    <select id="filterDocumentType" class="form-select form-select-sm filter-select" multiple size="2"></select>
+                                    <select id="filterDocumentType" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="purchaseType" data-label="Purchase Type" data-target="filterPurchaseType">
                                     <label class="filter-group-label" for="filterPurchaseType">Purchase Type</label>
-                                    <select id="filterPurchaseType" class="form-select form-select-sm filter-select" multiple size="2"></select>
+                                    <select id="filterPurchaseType" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="docCurrency" data-label="Doc Currency" data-target="filterDocCurrency">
                                     <label class="filter-group-label" for="filterDocCurrency">Doc Currency (FT12)</label>
-                                    <select id="filterDocCurrency" class="form-select form-select-sm filter-select" multiple size="2"></select>
+                                    <select id="filterDocCurrency" class="d-none" multiple></select>
                                 </div>
                             </div>
                         </div>
@@ -217,35 +231,37 @@
                     <!-- 3. Vendor (FT1-3) -->
                     <div class="accordion-item filter-section-header">
                         <h2 class="accordion-header" id="headingVendor">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVendor">
-                                <i class="bi bi-shop me-2 text-primary"></i> 3. Vendor
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVendor" aria-expanded="false">
+                                <i class="bi bi-shop me-2 text-primary"></i>
+                                <span>3. Vendor</span>
+                                <span class="badge rounded-pill bg-primary ms-auto me-2 section-active-badge" id="badge_section_3" style="display: none;">0</span>
                             </button>
                         </h2>
                         <div id="collapseVendor" class="accordion-collapse collapse" data-bs-parent="#filterAccordion">
                             <div class="accordion-body p-3">
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="bpName" data-label="BP Name" data-target="filterBPName">
                                     <label class="filter-group-label" for="filterBPName">BP Name (Vendor)</label>
-                                    <select id="filterBPName" class="form-select form-select-sm filter-select" multiple size="4"></select>
+                                    <select id="filterBPName" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="vendorGroup" data-label="Vendor Group" data-target="filterVendorGroup">
                                     <label class="filter-group-label" for="filterVendorGroup">Vendor Group</label>
-                                    <select id="filterVendorGroup" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterVendorGroup" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="industry" data-label="Industry" data-target="filterIndustry">
                                     <label class="filter-group-label" for="filterIndustry">Industry (DQ1)</label>
-                                    <select id="filterIndustry" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterIndustry" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="vendorCity" data-label="Vendor City" data-target="filterVendorCity">
                                     <label class="filter-group-label" for="filterVendorCity">Vendor City</label>
-                                    <select id="filterVendorCity" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterVendorCity" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="vendorState" data-label="Vendor State" data-target="filterVendorState">
                                     <label class="filter-group-label" for="filterVendorState">Vendor State</label>
-                                    <select id="filterVendorState" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterVendorState" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="vendorCountry" data-label="Vendor Country" data-target="filterVendorCountry">
                                     <label class="filter-group-label" for="filterVendorCountry">Vendor Country</label>
-                                    <select id="filterVendorCountry" class="form-select form-select-sm filter-select" multiple size="2"></select>
+                                    <select id="filterVendorCountry" class="d-none" multiple></select>
                                 </div>
                             </div>
                         </div>
@@ -254,15 +270,17 @@
                     <!-- 4. Buyer (FT1-4) -->
                     <div class="accordion-item filter-section-header">
                         <h2 class="accordion-header" id="headingBuyer">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBuyer">
-                                <i class="bi bi-person-badge me-2 text-primary"></i> 4. Buyer
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBuyer" aria-expanded="false">
+                                <i class="bi bi-person-badge me-2 text-primary"></i>
+                                <span>4. Buyer</span>
+                                <span class="badge rounded-pill bg-primary ms-auto me-2 section-active-badge" id="badge_section_4" style="display: none;">0</span>
                             </button>
                         </h2>
                         <div id="collapseBuyer" class="accordion-collapse collapse" data-bs-parent="#filterAccordion">
                             <div class="accordion-body p-3">
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="rowBuyer" data-label="Row Buyer" data-target="filterRowBuyer">
                                     <label class="filter-group-label" for="filterRowBuyer">Row Buyer</label>
-                                    <select id="filterRowBuyer" class="form-select form-select-sm filter-select" multiple size="4"></select>
+                                    <select id="filterRowBuyer" class="d-none" multiple></select>
                                 </div>
                             </div>
                         </div>
@@ -271,19 +289,21 @@
                     <!-- 5. Receiving Location (FT1-5) -->
                     <div class="accordion-item filter-section-header">
                         <h2 class="accordion-header" id="headingReceiving">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseReceiving">
-                                <i class="bi bi-geo-alt me-2 text-primary"></i> 5. Receiving Location
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseReceiving" aria-expanded="false">
+                                <i class="bi bi-geo-alt me-2 text-primary"></i>
+                                <span>5. Receiving Location</span>
+                                <span class="badge rounded-pill bg-primary ms-auto me-2 section-active-badge" id="badge_section_5" style="display: none;">0</span>
                             </button>
                         </h2>
                         <div id="collapseReceiving" class="accordion-collapse collapse" data-bs-parent="#filterAccordion">
                             <div class="accordion-body p-3">
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="receivingState" data-label="Receiving State" data-target="filterReceivingState">
                                     <label class="filter-group-label" for="filterReceivingState">Receiving State</label>
-                                    <select id="filterReceivingState" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterReceivingState" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="receivingCity" data-label="Receiving City" data-target="filterReceivingCity">
                                     <label class="filter-group-label" for="filterReceivingCity">Receiving City</label>
-                                    <select id="filterReceivingCity" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterReceivingCity" class="d-none" multiple></select>
                                 </div>
                             </div>
                         </div>
@@ -292,23 +312,25 @@
                     <!-- 6. Item Groups (FT1-6) -->
                     <div class="accordion-item filter-section-header">
                         <h2 class="accordion-header" id="headingItemGroups">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseItemGroups">
-                                <i class="bi bi-diagram-3 me-2 text-primary"></i> 6. Item Groups
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseItemGroups" aria-expanded="false">
+                                <i class="bi bi-diagram-3 me-2 text-primary"></i>
+                                <span>6. Item Groups</span>
+                                <span class="badge rounded-pill bg-primary ms-auto me-2 section-active-badge" id="badge_section_6" style="display: none;">0</span>
                             </button>
                         </h2>
                         <div id="collapseItemGroups" class="accordion-collapse collapse" data-bs-parent="#filterAccordion">
                             <div class="accordion-body p-3">
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="itemGroup" data-label="Item Group" data-target="filterItemGroup">
                                     <label class="filter-group-label" for="filterItemGroup">Item Group</label>
-                                    <select id="filterItemGroup" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterItemGroup" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="subGroup1" data-label="Sub Group 1" data-target="filterSubGroup1">
                                     <label class="filter-group-label" for="filterSubGroup1">Sub Group 1</label>
-                                    <select id="filterSubGroup1" class="form-select form-select-sm filter-select" multiple size="4"></select>
+                                    <select id="filterSubGroup1" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="subGroup2" data-label="Sub Group 2" data-target="filterSubGroup2">
                                     <label class="filter-group-label" for="filterSubGroup2">Sub Group 2</label>
-                                    <select id="filterSubGroup2" class="form-select form-select-sm filter-select" multiple size="4"></select>
+                                    <select id="filterSubGroup2" class="d-none" multiple></select>
                                 </div>
                             </div>
                         </div>
@@ -317,31 +339,33 @@
                     <!-- 7. Item: General (FT1-7) -->
                     <div class="accordion-item filter-section-header">
                         <h2 class="accordion-header" id="headingItemGeneral">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseItemGeneral">
-                                <i class="bi bi-box-seam me-2 text-primary"></i> 7. Item: General
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseItemGeneral" aria-expanded="false">
+                                <i class="bi bi-box-seam me-2 text-primary"></i>
+                                <span>7. Item: General</span>
+                                <span class="badge rounded-pill bg-primary ms-auto me-2 section-active-badge" id="badge_section_7" style="display: none;">0</span>
                             </button>
                         </h2>
                         <div id="collapseItemGeneral" class="accordion-collapse collapse" data-bs-parent="#filterAccordion">
                             <div class="accordion-body p-3">
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="itemCode" data-label="Item Code / Name" data-target="filterItemCode">
                                     <label class="filter-group-label" for="filterItemCode">Item Code / Name</label>
-                                    <select id="filterItemCode" class="form-select form-select-sm filter-select" multiple size="4"></select>
+                                    <select id="filterItemCode" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="brand" data-label="Brand" data-target="filterBrand">
                                     <label class="filter-group-label" for="filterBrand">Brand</label>
-                                    <select id="filterBrand" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterBrand" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="moc" data-label="MOC" data-target="filterMOC">
                                     <label class="filter-group-label" for="filterMOC">MOC</label>
-                                    <select id="filterMOC" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterMOC" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="madeToOrder" data-label="Made To Order" data-target="filterMadeToOrder">
                                     <label class="filter-group-label" for="filterMadeToOrder">Made To Order</label>
-                                    <select id="filterMadeToOrder" class="form-select form-select-sm filter-select" multiple size="2"></select>
+                                    <select id="filterMadeToOrder" class="d-none" multiple></select>
                                 </div>
-                                <div class="filter-group">
+                                <div class="filter-group mb-2" data-key="uom" data-label="UoM" data-target="filterUoM">
                                     <label class="filter-group-label" for="filterUoM">UoM</label>
-                                    <select id="filterUoM" class="form-select form-select-sm filter-select" multiple size="3"></select>
+                                    <select id="filterUoM" class="d-none" multiple></select>
                                 </div>
                             </div>
                         </div>
@@ -350,13 +374,15 @@
                     <!-- 8. Item Attributes (FT1-8) -->
                     <div class="accordion-item filter-section-header">
                         <h2 class="accordion-header" id="headingItemAttributes">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseItemAttributes">
-                                <i class="bi bi-tags me-2 text-primary"></i> 8. Item Attributes
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseItemAttributes" aria-expanded="false">
+                                <i class="bi bi-tags me-2 text-primary"></i>
+                                <span>8. Item Attributes</span>
+                                <span class="badge rounded-pill bg-primary ms-auto me-2 section-active-badge" id="badge_section_8" style="display: none;">0</span>
                             </button>
                         </h2>
                         <div id="collapseItemAttributes" class="accordion-collapse collapse" data-bs-parent="#filterAccordion">
                             <div class="accordion-body p-3" id="itemAttributesContainer">
-                                <!-- Dynamically populated Item Attribute filters -->
+                                <!-- Dynamically populated Item Attribute filters with custom searchable dropdowns -->
                             </div>
                         </div>
                     </div>
@@ -373,7 +399,8 @@
                 <div class="col-sm-4">
                     <div class="card p-3 border-0 shadow-sm bg-white border-start border-primary border-4">
                         <span class="small text-muted text-uppercase fw-semibold">Filtered Spend</span>
-                        <h4 class="fw-bold text-success mb-0 mt-1" id="kpiFilteredSpend">₹0.00</h4>
+                        <h4 class="fw-bold text-success mb-0 mt-1" id="kpiFilteredSpend" title="Exact Value: ₹0.00">₹0</h4>
+                        <small class="text-muted d-block mt-1 font-monospace" id="kpiFilteredSpendExact" style="font-size: 0.725rem;">Exact: ₹0.00</small>
                     </div>
                 </div>
                 <div class="col-sm-4">

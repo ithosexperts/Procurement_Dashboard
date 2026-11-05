@@ -2,8 +2,41 @@
 Unit tests for Milestone 2: Dashboard UI components, gating, and elements.
 """
 import pytest
+import pandas as pd
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from app.services.procurement_service import data_store
+
+
+@pytest.fixture(autouse=True)
+def mock_store_data(monkeypatch):
+    """Ensure in-memory data store is populated so UI tests don't make network calls."""
+    dummy_df = pd.DataFrame([{
+        "DocNum": 1001,
+        "Document": "AP Invoice",
+        "Document Type": "Item",
+        "Posting Date": "2026-01-01 00:00:00",
+        "Vendors Doc Date": "2026-01-01 00:00:00",
+        "Posting_Date_Formatted": "01-Jan-2026",
+        "Vendor_Doc_Date_Formatted": "01-Jan-2026",
+        "BP Name": "Test Vendor",
+        "Item Code": "ITEM-1",
+        "Quantity": 10.0,
+        "UoM": "NOS",
+        "Row Total (After Doc Disc)": 1000.0,
+        "Vendors Doc No.": "INV-100",
+        "Row Buyer": "Sumit",
+        "DocCur": "INR",
+    }])
+    monkeypatch.setattr(data_store, "_df", dummy_df)
+    monkeypatch.setattr(data_store, "_total_records", len(dummy_df))
+    monkeypatch.setattr(data_store, "_data_as_of", pd.to_datetime("2026-11-04 12:00:00"))
+
+    async def _mock_get_df(*args, **kwargs):
+        return dummy_df
+
+    monkeypatch.setattr(data_store, "get_dataframe", _mock_get_df)
+    yield
 
 
 @pytest.mark.asyncio
@@ -54,6 +87,7 @@ async def test_dashboard_ui_buttons_and_header():
     html = resp.text
     assert 'id="btnRefreshData"' in html
     assert 'id="btnResetFilters"' in html
+    assert 'id="btnResetGranularity"' in html
     assert 'id="dataAsOfText"' in html
 
 
@@ -172,3 +206,4 @@ async def test_dashboard_ui_detail_table_thirteen_columns():
 
     for col in expected_cols:
         assert col in html
+

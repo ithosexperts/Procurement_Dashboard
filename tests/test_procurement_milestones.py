@@ -322,3 +322,4 @@ def test_lm1_year_end_week_split_accepted_limitation():
     # LM1: The week spanning 31 Dec / 1 Jan shows as two short bars (Week 53 and Week 1).
     # Confirm SQL week column numbers are preserved directly.
     assert True
+
