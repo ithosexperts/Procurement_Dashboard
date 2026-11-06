@@ -1,9 +1,8 @@
 """
 Procurement Dashboard - FastAPI Application Entrypoint.
 
-Independent Procurement Analytics application for HoseXperts.
-Follows FMS Portal architecture, coding conventions, authentication,
-and API integration patterns.
+Independent, standalone Procurement Analytics application for HoseXperts.
+A simple, direct-access analytics dashboard without SSO or role-based complexity.
 """
 from __future__ import annotations
 
@@ -12,14 +11,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.client import ApiError
 from app.config import settings
-from app.middleware.oneportal_auth import OnePortalAuthMiddleware
-from app.routers import dashboard, sso
+from app.routers import dashboard
 from app.templates_config import templates
 
 # ── Logging Setup ──────────────────────────────────────────────
@@ -51,8 +49,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── Middleware (last added = first executed) ───────────────────
-app.add_middleware(OnePortalAuthMiddleware)
+# ── Middleware ─────────────────────────────────────────────────
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 # ── Static Files ───────────────────────────────────────────────
@@ -60,8 +57,18 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # ── Routers ────────────────────────────────────────────────────
-app.include_router(sso.router)
 app.include_router(dashboard.router)
+
+
+# ── SSO Legacy Redirects ───────────────────────────────────────
+# Seamlessly route any legacy SSO/auth requests directly to dashboard
+@app.get("/sso/login")
+@app.get("/sso/logout")
+@app.get("/auth/login")
+@app.get("/auth/logout")
+@app.post("/auth/launch")
+async def auth_redirect():
+    return RedirectResponse(url="/", status_code=303)
 
 
 # ── Health-check Endpoints ─────────────────────────────────────
@@ -89,7 +96,6 @@ async def api_error_handler(request: Request, exc: ApiError):
         request,
         "dashboard/index.html",
         {
-            "user": getattr(request.state, "identity", None),
             "record_count": 0,
             "total_spend": 0.0,
             "total_spend_formatted": "₹0.00",

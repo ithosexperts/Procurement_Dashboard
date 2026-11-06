@@ -1,19 +1,20 @@
 """
-Tests for FastAPI application endpoints, health checks, and middleware.
+Tests for FastAPI application endpoints, health checks, and direct access routing.
+Verifies that the application operates as a simple, normal dashboard without SSO.
 """
+from unittest.mock import AsyncMock, patch
 import pytest
-from httpx import AsyncClient, ASGITransport
+from starlette.testclient import TestClient
 from app.main import app
 from app.config import settings
 
+client = TestClient(app)
 
-@pytest.mark.asyncio
-async def test_health_endpoints():
+
+def test_health_endpoints():
     """Verify /health and /healthz endpoints are active and public."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        r1 = await ac.get("/health")
-        r2 = await ac.get("/healthz")
+    r1 = client.get("/health")
+    r2 = client.get("/healthz")
 
     assert r1.status_code == 200
     assert r1.json()["status"] == "ok"
@@ -23,42 +24,63 @@ async def test_health_endpoints():
     assert r2.json()["status"] == "ok"
 
 
-@pytest.mark.asyncio
-async def test_sso_login_page_accessible():
-    """Verify login page renders with HTTP 200."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.get("/sso/login")
+def test_legacy_sso_routes_redirect_to_dashboard():
+    """Verify old SSO/auth routes cleanly redirect to the main dashboard."""
+    r_login = client.get("/sso/login", follow_redirects=False)
+    r_logout = client.get("/sso/logout", follow_redirects=False)
+    r_launch = client.post("/auth/launch", follow_redirects=False)
+
+    assert r_login.status_code == 303
+    assert r_login.headers["location"] == "/"
+
+    assert r_logout.status_code == 303
+    assert r_logout.headers["location"] == "/"
+
+    assert r_launch.status_code == 303
+    assert r_launch.headers["location"] == "/"
+
+
+def test_dashboard_direct_access_without_sso():
+    """Verify the dashboard landing page is directly accessible without any authentication."""
+    mock_summary = {
+        "record_count": 100,
+        "total_spend": 50000.0,
+        "total_spend_formatted": "₹50,000.00",
+        "data_as_of_formatted": "2026-11-06 12:00:00",
+        "database": "Test_OperationsDB",
+        "sample_records": [],
+        "columns": [],
+        "uom_summary": [],
+        "error": None,
+    }
+
+    with patch("app.routers.dashboard.get_procurement_summary", new=AsyncMock(return_value=mock_summary)):
+        resp = client.get("/")
 
     assert resp.status_code == 200
     assert "Procurement Dashboard" in resp.text
-    assert "One Portal" in resp.text
+    # Ensure no SSO login button or user dropdown exists in HTML
+    assert "Logged in via One Portal" not in resp.text
 
 
-@pytest.mark.asyncio
-async def test_sso_logout_clears_cookie():
-    """Verify logout deletes session cookie and redirects."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport, base_url="http://test", follow_redirects=False
-    ) as ac:
-        resp = await ac.get("/sso/logout")
+def test_api_summary_direct_access_without_sso():
+    """Verify summary API endpoint returns data without requiring tokens or sessions."""
+    mock_summary = {
+        "record_count": 42,
+        "total_spend": 12345.67,
+        "total_spend_formatted": "₹12,345.67",
+        "data_as_of_formatted": "2026-11-06 12:00:00",
+        "database": "Test_OperationsDB",
+        "sample_records": [],
+        "columns": [],
+        "uom_summary": [],
+        "error": None,
+    }
 
-    assert resp.status_code == 303
-    assert resp.headers["location"] == "/sso/login"
-    # Cookie should be cleared
-    set_cookie = resp.headers.get("set-cookie", "")
-    assert "procurement_sso_session" in set_cookie
+    with patch("app.routers.dashboard.get_procurement_summary", new=AsyncMock(return_value=mock_summary)):
+        resp = client.get("/api/procurement/summary")
 
-
-@pytest.mark.asyncio
-async def test_unauthenticated_api_request_when_auth_enforced(monkeypatch):
-    """When ONE_PORTAL_AUTH_ENABLED=True, unauthenticated API calls return 401."""
-    monkeypatch.setattr(settings, "one_portal_auth_enabled", True)
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.get("/api/procurement/summary")
-
-    assert resp.status_code == 401
-    assert "detail" in resp.json()
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["record_count"] == 42
+    assert data["total_spend"] == 12345.67

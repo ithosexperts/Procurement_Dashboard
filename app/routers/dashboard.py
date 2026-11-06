@@ -8,7 +8,6 @@ from typing import Any
 from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import JSONResponse
 
-from app.auth.request_context import get_current_identity
 from app.services.procurement_service import (
     data_store,
     get_procurement_summary,
@@ -24,14 +23,13 @@ router = APIRouter(tags=["dashboard"])
 @router.get("/")
 async def index(request: Request):
     """Render the main Procurement Dashboard landing page."""
-    user = getattr(request.state, "identity", None) or get_current_identity()
     summary = await get_procurement_summary(sample_limit=15)
 
     return templates.TemplateResponse(
         request,
         "dashboard/index.html",
         {
-            "user": user,
+            "user": None,
             "record_count": summary["record_count"],
             "total_spend": summary["total_spend"],
             "total_spend_formatted": summary["total_spend_formatted"],

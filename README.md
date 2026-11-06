@@ -13,7 +13,7 @@ An independent, enterprise-grade Procurement Analytics Dashboard application for
 |---|---|---|
 | **Backend** | Python 3.11+, FastAPI, HTTPX, Pandas | REST service, data aggregation, API client |
 | **Frontend** | HTML5, CSS3, JavaScript, Bootstrap 5, Chart.js | Responsive analytics dashboard UI |
-| **Auth** | HoseXperts One Portal SSO | HMAC-SHA256 signed ticket launch & session cookies |
+| **Application Type** | Standalone Web Application | Direct access analytics portal without SSO or role gating |
 | **Data Source** | HoseXperts Company API (`apiv2.php`) | SQL View: `VD_Procurement_Dashboard` |
 | **Deployment** | Render (`render.yaml`) | Free / Starter Python web service |
 
@@ -34,20 +34,14 @@ Procurement_Dashboard/
         auth/
             __init__.py
             request_context.py      # ContextVar storage for request identity & target DB
-            sso_session.py          # One Portal ticket validation, session cookies, replay store
-        middleware/
-            __init__.py
-            oneportal_auth.py       # Authentication middleware protecting application routes
         routers/
             __init__.py
-            sso.py                  # One Portal ticket launch, login, and logout endpoints
             dashboard.py            # Dashboard HTML view and summary JSON API
         services/
             __init__.py
             procurement_service.py  # Procurement metric calculation, UoM aggregation
         templates/
             base.html               # Shared layout, navbar, Chart.js & Bootstrap assets
-            login.html              # SSO guidance view
             dashboard/
                 index.html          # Executive summary KPI cards, UoM breakdown, data preview
         static/
@@ -57,9 +51,8 @@ Procurement_Dashboard/
                 app.js              # Frontend interactive scripts
             images/
     tests/
-        test_app.py                 # Health checks, public routes, auth enforcement
+        test_app.py                 # Health checks, public routes, direct access tests
         test_procurement_service.py # Aggregation logic, credit memo negative spend, error handling
-        test_sso.py                 # Ticket verification, JTI replay store, session cookies
     test_api.py                     # Standalone API smoke-test script
     requirements.txt                # Python package dependencies
     pytest.ini                      # Pytest runner configuration
@@ -102,21 +95,14 @@ All items of Development Milestone 1 are implemented and verified:
 
 ---
 
-## 5. One Portal Single Sign-On (SSO) Protocol
+## 5. Standalone Direct Access Architecture
 
-The authentication flow is completely compatible with HoseXperts One Portal:
+Procurement Dashboard is designed as a standalone, normal analytics web application:
 
-1. **Ticket Issuance**: When a logged-in user clicks "Procurement Dashboard" in One Portal, One Portal mints a short-lived (~45-60s) HMAC-SHA256 JWT ticket containing:
-   - `iss`: `"one-portal"`
-   - `aud`: `"procurement-dashboard"`
-   - `exp`, `iat`, `jti`: standard token expiry, timestamp, and unique single-use token ID
-   - `employee_code`: user identifier
-   - `portal_session_id`: active session ID in One Portal
-   - `target_database`: `"Test_OperationsDB"` or `"OperationsDB"`
-2. **Ticket Consumption**: One Portal POSTs the ticket to `/auth/launch`.
-3. **Verification & Replay Check**: The application verifies the ticket signature using `PROCUREMENT_SSO_SECRET`, checks the audience, and records the `jti` in `_ReplayStore` to prevent replay attacks.
-4. **Session Cookie**: A signed HttpOnly cookie (`procurement_sso_session`) is set with configured TTL and SameSite policy.
-5. **Route Protection**: The `OnePortalAuthMiddleware` checks for this session cookie on protected routes. Unauthenticated requests are redirected to `/sso/login` or receive 401 for API requests.
+1. **Direct Access**: Does not require Single Sign-On (SSO) ticket launch, external authentication tokens, or login credentials.
+2. **Open Analytics**: All KPI metrics, interactive period charts, 10 breakdown charts, cascading multi-select filters, and the 13-column detailed transactions table are directly accessible upon visiting `/`.
+3. **No Role Gatekeeping**: Users have immediate, unrestricted access to the analytics tools, in-memory dataset refresh, and filter resets without role barriers.
+4. **Seamless Legacy Routing**: Any incoming legacy SSO/auth requests (e.g., `/sso/login`, `/sso/logout`, `/auth/launch`) cleanly redirect straight to the main dashboard (`/`).
 
 ---
 
