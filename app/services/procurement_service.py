@@ -169,14 +169,11 @@ class ProcurementDataStore:
             return self._df
 
     async def _load_data(self) -> None:
-        """Fetch the full view in small sequential batches to limit Render memory spikes."""
+        """Fetch the full view concurrently in bounded batches to avoid Render timeout."""
         target_db = get_current_database_target() or settings.api_database
         logger.info("Initiating full dataset load from VD_Procurement_Dashboard (%s)", target_db)
 
-        # Keep each raw API response short-lived. Building one giant Python list of
-        # 70k x 56 dictionaries before constructing a DataFrame can exceed the
-        # memory limit of a small Render instance.
-        batch_size = 5000
+        batch_size = 10000
         first_resp = await api_request(
             table="VD_Procurement_Dashboard",
             action="select",
@@ -195,23 +192,29 @@ class ProcurementDataStore:
             page_frames.append(pd.DataFrame.from_records(first_rows))
         del first_rows, first_resp
 
-        for page_num in range(2, total_pages + 1):
-            response = await api_request(
-                table="VD_Procurement_Dashboard",
-                action="select",
-                columns="*",
-                page=page_num,
-                limit=batch_size,
-                database=target_db,
-            )
-            page_rows = response.get("data") or []
-            if page_rows:
-                page_frames.append(pd.DataFrame.from_records(page_rows))
-            logger.info(
-                "Loaded procurement batch %d/%d (%d rows in batch)",
-                page_num, total_pages, len(page_rows)
-            )
-            del page_rows, response
+        if total_pages > 1:
+            sem = asyncio.Semaphore(4)
+
+            async def _fetch_page(page_num: int) -> pd.DataFrame:
+                async with sem:
+                    resp = await api_request(
+                        table="VD_Procurement_Dashboard",
+                        action="select",
+                        columns="*",
+                        page=page_num,
+                        limit=batch_size,
+                        database=target_db,
+                    )
+                    rows = resp.get("data") or []
+                    df_chunk = pd.DataFrame.from_records(rows) if rows else pd.DataFrame()
+                    logger.info("Loaded batch %d/%d (%d rows)", page_num, total_pages, len(rows))
+                    del rows, resp
+                    return df_chunk
+
+            tasks = [_fetch_page(p) for p in range(2, total_pages + 1)]
+            remaining_frames = await asyncio.gather(*tasks)
+            page_frames.extend([f for f in remaining_frames if not f.empty])
+            del remaining_frames
 
         if not page_frames:
             if total_rows > 0:

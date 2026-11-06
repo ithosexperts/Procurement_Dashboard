@@ -6,6 +6,7 @@ A simple, direct-access analytics dashboard without SSO or role-based complexity
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,6 +19,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.api.client import ApiError
 from app.config import settings
 from app.routers import dashboard
+from app.services.procurement_service import data_store
 from app.templates_config import templates
 
 # ── Logging Setup ──────────────────────────────────────────────
@@ -38,6 +40,8 @@ async def lifespan(app: FastAPI):
         settings.environment,
         settings.api_database,
     )
+    # Background warm-up dataset load so initial user requests return instantly
+    asyncio.create_task(data_store.get_dataframe())
     yield
     logger.info("Shutting down %s", settings.app_name)
 
