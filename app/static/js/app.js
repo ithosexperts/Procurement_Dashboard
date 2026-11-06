@@ -14,10 +14,10 @@
 
     // Application State
     const AppState = {
-        // Stage 1 & Stage 2
-        granularity: null,   // "Daily" | "Weekly" | "Monthly" | "Yearly"
-        measure: null,       // "Spend" | "Quantity"
-        dateBasis: null,     // "Posting Date" | "Vendor's Doc Date"
+        // Stage 1 & Stage 2 Defaults (Active on page load)
+        granularity: "Monthly",   // "Daily" | "Weekly" | "Monthly" | "Yearly"
+        measure: "Spend",         // "Spend" | "Quantity"
+        dateBasis: "Posting Date", // "Posting Date" | "Vendor's Doc Date"
 
         // Metadata & Datasets
         isLoaded: false,
@@ -815,6 +815,7 @@
         MultiSelectManager.init();
         // Granularity
         DOM.granularityRadios.forEach(radio => {
+            if (radio.checked) AppState.granularity = radio.value;
             radio.addEventListener("change", function () {
                 if (this.checked) {
                     AppState.granularity = this.value;
@@ -825,6 +826,7 @@
 
         // Measure
         DOM.measureRadios.forEach(radio => {
+            if (radio.checked) AppState.measure = radio.value;
             radio.addEventListener("change", function () {
                 if (this.checked) {
                     AppState.measure = this.value;
@@ -835,6 +837,7 @@
 
         // Date Basis
         DOM.dateBasisRadios.forEach(radio => {
+            if (radio.checked) AppState.dateBasis = radio.value;
             radio.addEventListener("change", function () {
                 if (this.checked) {
                     AppState.dateBasis = this.value;

@@ -58,7 +58,7 @@
                     <input type="radio" class="btn-check" name="granularity" id="granWeekly" value="Weekly" autocomplete="off">
                     <label class="btn btn-outline-primary" for="granWeekly">Weekly</label>
 
-                    <input type="radio" class="btn-check" name="granularity" id="granMonthly" value="Monthly" autocomplete="off">
+                    <input type="radio" class="btn-check" name="granularity" id="granMonthly" value="Monthly" autocomplete="off" checked>
                     <label class="btn btn-outline-primary" for="granMonthly">Monthly</label>
 
                     <input type="radio" class="btn-check" name="granularity" id="granYearly" value="Yearly" autocomplete="off">
@@ -70,7 +70,7 @@
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <label class="selection-group-label">MEASURE:</label>
                 <div class="btn-group btn-group-sm btn-group-toggle" role="group" id="measureGroup" aria-label="Measure">
-                    <input type="radio" class="btn-check" name="measure" id="measSpend" value="Spend" autocomplete="off">
+                    <input type="radio" class="btn-check" name="measure" id="measSpend" value="Spend" autocomplete="off" checked>
                     <label class="btn btn-outline-primary" for="measSpend"><i class="bi bi-currency-rupee me-1"></i>Spend</label>
 
                     <input type="radio" class="btn-check" name="measure" id="measQuantity" value="Quantity" autocomplete="off">
@@ -82,7 +82,7 @@
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <label class="selection-group-label">DATE BASIS:</label>
                 <div class="btn-group btn-group-sm btn-group-toggle" role="group" id="dateBasisGroup" aria-label="Date basis">
-                    <input type="radio" class="btn-check" name="dateBasis" id="basisPostingDate" value="Posting Date" autocomplete="off">
+                    <input type="radio" class="btn-check" name="dateBasis" id="basisPostingDate" value="Posting Date" autocomplete="off" checked>
                     <label class="btn btn-outline-primary" for="basisPostingDate"><i class="bi bi-calendar-event me-1"></i>Posting Date</label>
 
                     <input type="radio" class="btn-check" name="dateBasis" id="basisVendorDocDate" value="Vendor's Doc Date" autocomplete="off">
@@ -93,8 +93,8 @@
     </div>
 </div>
 
-<!-- Refined Empty-State / Welcome Panel -->
-<div id="selectionPromptCard" class="card welcome-panel text-center my-4 py-4 px-3 px-md-5">
+<!-- Refined Empty-State / Welcome Panel (Hidden by default since defaults are active) -->
+<div id="selectionPromptCard" class="card welcome-panel text-center my-4 py-4 px-3 px-md-5" style="display: none;">
     <div class="card-body p-2">
         <div class="welcome-icon-box mb-3">
             <i class="bi bi-bar-chart-line"></i>
@@ -109,8 +109,8 @@
     </div>
 </div>
 
-<!-- Main Dashboard Container (Hidden until both Stage 1 and Stage 2 are selected) -->
-<div id="dashboardMainContent" style="display: none;">
+<!-- Main Dashboard Container (Visible by default with Monthly / Spend / Posting Date) -->
+<div id="dashboardMainContent">
 
     <!-- No Data Warning Alert (FT11) -->
     <div id="noDataAlert" class="alert alert-warning shadow-sm align-items-center mb-4" style="display: none;" role="alert">

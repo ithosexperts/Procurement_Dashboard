@@ -42,6 +42,7 @@ def _get_headers() -> dict[str, str]:
     bearer = get_current_bearer_token() or settings.api_auth_token
     if bearer:
         headers["Authorization"] = f"Bearer {bearer}"
+        headers["API-Key"] = bearer
     return headers
 
 

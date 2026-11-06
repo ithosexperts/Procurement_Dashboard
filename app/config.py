@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     api_auth_token: str = ""
     api_username: str = ""
     api_password: str = ""
-    api_database: str = "Test_OperationsDB"
+    api_database: str = "OperationsDB"
     api_timeout: float = 30.0
 
     # ── Application Security & Logging ─────────────────────────────
