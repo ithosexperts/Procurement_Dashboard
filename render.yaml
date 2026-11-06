@@ -16,7 +16,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: API_BASE_URL
-        value: "https://api.hosexperts.com:85/apiv3.php"
+        value: 
       - key: API_DATABASE
         value: "OperationsDB"
       - key: API_AUTH_TOKEN
