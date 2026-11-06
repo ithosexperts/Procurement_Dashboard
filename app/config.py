@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     api_username: str = ""
     api_password: str = ""
     api_database: str = "OperationsDB"
-    api_timeout: float = 30.0
+    api_timeout: float = 90.0
 
     # ── Application Security & Logging ─────────────────────────────
     secret_key: str = "change-me-in-production-procurement-dashboard-key"
