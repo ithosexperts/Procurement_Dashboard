@@ -12,7 +12,7 @@ client = TestClient(app)
 
 
 def test_health_endpoints():
-    """Verify /health and /healthz endpoints are active and public."""
+    """Verify /health and /healthz endpoints are active and public for both GET and HEAD."""
     r1 = client.get("/health")
     r2 = client.get("/healthz")
 
@@ -22,6 +22,15 @@ def test_health_endpoints():
 
     assert r2.status_code == 200
     assert r2.json()["status"] == "ok"
+
+    # Test HEAD requests (vital for Render and cloud load balancers)
+    h_root = client.head("/")
+    h_health = client.head("/health")
+    h_healthz = client.head("/healthz")
+
+    assert h_root.status_code == 200
+    assert h_health.status_code == 200
+    assert h_healthz.status_code == 200
 
 
 def test_legacy_sso_routes_redirect_to_dashboard():

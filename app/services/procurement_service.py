@@ -220,10 +220,10 @@ class ProcurementDataStore:
 
         # Numeric conversions
         if SPEND_COL in df.columns:
-            df[SPEND_COL] = pd.to_numeric(df[SPEND_COL], errors="coerce").fillna(0.0)
+            df.loc[:, SPEND_COL] = pd.to_numeric(df[SPEND_COL], errors="coerce").fillna(0.0)
 
         if QTY_COL in df.columns:
-            df[QTY_COL] = pd.to_numeric(df[QTY_COL], errors="coerce").fillna(0.0)
+            df.loc[:, QTY_COL] = pd.to_numeric(df[QTY_COL], errors="coerce").fillna(0.0)
 
         # Date conversions & formatted display columns
         for date_col, disp_col in [

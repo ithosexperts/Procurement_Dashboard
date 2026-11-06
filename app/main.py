@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -50,6 +50,18 @@ app = FastAPI(
 )
 
 # ── Middleware ─────────────────────────────────────────────────
+@app.middleware("http")
+async def head_request_middleware(request: Request, call_next):
+    """
+    Handle HEAD requests for Render/cloud load balancers and health checkers.
+    Returns 200 OK for root and health paths immediately.
+    """
+    if request.method == "HEAD":
+        if request.url.path in {"/", "/health", "/healthz"}:
+            return Response(status_code=200, headers={"Content-Type": "text/html; charset=utf-8"})
+    return await call_next(request)
+
+
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 # ── Static Files ───────────────────────────────────────────────
@@ -74,6 +86,9 @@ async def auth_redirect():
 # ── Health-check Endpoints ─────────────────────────────────────
 @app.get("/health")
 @app.get("/healthz")
+@app.head("/health")
+@app.head("/healthz")
+@app.head("/")
 async def health():
     return {
         "status": "ok",
@@ -83,7 +98,7 @@ async def health():
     }
 
 
-# ── Exception Handlers ─────────────────────────────────────────
+# ── Exception Handlers ─────────────────────────────────
 @app.exception_handler(ApiError)
 async def api_error_handler(request: Request, exc: ApiError):
     logger.error("API error handling request %s: %s", request.url.path, exc)

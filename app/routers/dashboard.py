@@ -5,9 +5,10 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from fastapi import APIRouter, Body, Query, Request
+from fastapi import APIRouter, Body, Query, Request, Response
 from fastapi.responses import JSONResponse
 
+from app.config import settings
 from app.services.procurement_service import (
     data_store,
     get_procurement_summary,
@@ -21,9 +22,41 @@ router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/")
+@router.head("/")
 async def index(request: Request):
     """Render the main Procurement Dashboard landing page."""
-    summary = await get_procurement_summary(sample_limit=15)
+    if request.method == "HEAD":
+        return Response(status_code=200, media_type="text/html")
+
+    # Fast path: if dataset is loaded, pass summary; otherwise render immediately
+    if data_store.is_loaded:
+        try:
+            summary = await get_procurement_summary(sample_limit=15)
+        except Exception as exc:
+            logger.warning("Error getting procurement summary on index: %s", exc)
+            summary = {
+                "record_count": 0,
+                "total_spend": 0.0,
+                "total_spend_formatted": "₹0.00",
+                "data_as_of_formatted": "--",
+                "database": settings.api_database,
+                "sample_records": [],
+                "columns": [],
+                "uom_summary": [],
+                "error": str(exc),
+            }
+    else:
+        summary = {
+            "record_count": 0,
+            "total_spend": 0.0,
+            "total_spend_formatted": "₹0.00",
+            "data_as_of_formatted": "--",
+            "database": settings.api_database,
+            "sample_records": [],
+            "columns": [],
+            "uom_summary": [],
+            "error": None,
+        }
 
     return templates.TemplateResponse(
         request,
