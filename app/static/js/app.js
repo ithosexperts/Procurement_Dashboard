@@ -1380,6 +1380,8 @@
                 throw new Error(`HTTP error ${resp.status}`);
             }
             const data = await resp.json();
+            const priorError = document.getElementById("procurementLoadError");
+            if (priorError) priorError.remove();
             AppState.isLoaded = true;
             AppState.dataAsOf = data.data_as_of;
             AppState.totalRecords = data.record_count || 0;
@@ -1393,6 +1395,16 @@
             }
         } catch (err) {
             console.error("Failed to load procurement dataset:", err);
+            let errorBox = document.getElementById("procurementLoadError");
+            if (!errorBox) {
+                errorBox = document.createElement("div");
+                errorBox.id = "procurementLoadError";
+                errorBox.className = "alert alert-danger m-3";
+                errorBox.setAttribute("role", "alert");
+                const host = document.querySelector("main") || document.body;
+                host.prepend(errorBox);
+            }
+            errorBox.textContent = `Procurement data could not be loaded: ${err.message}. Please use Refresh Data to retry.`;
         } finally {
             if (DOM.loadingOverlay) {
                 DOM.loadingOverlay.style.display = "none";
