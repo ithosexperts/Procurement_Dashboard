@@ -1364,7 +1364,7 @@
     }
 
     /**
-     * Fetch full dataset from backend (DL1).
+     * Fetch full dataset from backend (DL1) with non-blocking progress polling.
      */
     async function loadProcurementDataset(isRefresh = false) {
         if (DOM.loadingOverlay) {
@@ -1374,41 +1374,65 @@
             }
         }
 
-        try {
-            const resp = await fetch("/api/procurement/dataset" + (isRefresh ? "?refresh=true" : ""));
-            if (!resp.ok) {
-                throw new Error(`HTTP error ${resp.status}`);
-            }
-            const data = await resp.json();
-            const priorError = document.getElementById("procurementLoadError");
-            if (priorError) priorError.remove();
-            AppState.isLoaded = true;
-            AppState.dataAsOf = data.data_as_of;
-            AppState.totalRecords = data.record_count || 0;
+        const url = "/api/procurement/dataset" + (isRefresh ? "?refresh=true" : "");
+        const maxAttempts = 60; // 60 attempts * 1.5s = 90s max wait
+        let attempt = 0;
 
-            if (DOM.dataAsOfText && data.data_as_of_formatted) {
-                DOM.dataAsOfText.textContent = `Data as of ${data.data_as_of_formatted}`;
-            }
+        while (attempt < maxAttempts) {
+            attempt++;
+            try {
+                const resp = await fetch(attempt === 1 ? url : "/api/procurement/dataset");
+                if (!resp.ok) {
+                    const errBody = await resp.json().catch(() => null);
+                    throw new Error(errBody?.error || `HTTP error ${resp.status}`);
+                }
+                const data = await resp.json();
 
-            if (isFlowReady()) {
-                executeQuery();
+                if (data.status === "loading") {
+                    if (DOM.loadingText && data.progress) {
+                        DOM.loadingText.textContent = data.progress;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    continue;
+                }
+
+                if (data.status === "error") {
+                    throw new Error(data.error || "Failed to load procurement dataset");
+                }
+
+                // Status is success!
+                const priorError = document.getElementById("procurementLoadError");
+                if (priorError) priorError.remove();
+                AppState.isLoaded = true;
+                AppState.dataAsOf = data.data_as_of;
+                AppState.totalRecords = data.record_count || 0;
+
+                if (DOM.dataAsOfText && data.data_as_of_formatted) {
+                    DOM.dataAsOfText.textContent = `Data as of ${data.data_as_of_formatted}`;
+                }
+
+                if (isFlowReady()) {
+                    executeQuery();
+                }
+                break;
+            } catch (err) {
+                console.error("Failed to load procurement dataset:", err);
+                let errorBox = document.getElementById("procurementLoadError");
+                if (!errorBox) {
+                    errorBox = document.createElement("div");
+                    errorBox.id = "procurementLoadError";
+                    errorBox.className = "alert alert-danger m-3";
+                    errorBox.setAttribute("role", "alert");
+                    const host = document.querySelector("main") || document.body;
+                    host.prepend(errorBox);
+                }
+                errorBox.textContent = `Procurement data could not be loaded: ${err.message}. Please use Refresh Data to retry.`;
+                break;
             }
-        } catch (err) {
-            console.error("Failed to load procurement dataset:", err);
-            let errorBox = document.getElementById("procurementLoadError");
-            if (!errorBox) {
-                errorBox = document.createElement("div");
-                errorBox.id = "procurementLoadError";
-                errorBox.className = "alert alert-danger m-3";
-                errorBox.setAttribute("role", "alert");
-                const host = document.querySelector("main") || document.body;
-                host.prepend(errorBox);
-            }
-            errorBox.textContent = `Procurement data could not be loaded: ${err.message}. Please use Refresh Data to retry.`;
-        } finally {
-            if (DOM.loadingOverlay) {
-                DOM.loadingOverlay.style.display = "none";
-            }
+        }
+
+        if (DOM.loadingOverlay) {
+            DOM.loadingOverlay.style.display = "none";
         }
     }
 

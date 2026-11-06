@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
+import gc
 import logging
 import time
 from typing import Any
@@ -130,6 +131,11 @@ class ProcurementDataStore:
         self._total_records: int = 0
         self._database: str = settings.api_database
         self._lock = asyncio.Lock()
+        self._is_loading: bool = False
+        self._load_error: str | None = None
+        self._load_progress: str = "Ready"
+        self._loaded_so_far: int = 0
+        self._load_task: asyncio.Task | None = None
 
     @classmethod
     def get_instance(cls) -> ProcurementDataStore:
@@ -140,6 +146,22 @@ class ProcurementDataStore:
     @property
     def is_loaded(self) -> bool:
         return self._df is not None and not self._df.empty
+
+    @property
+    def is_loading(self) -> bool:
+        return self._is_loading
+
+    @property
+    def load_error(self) -> str | None:
+        return self._load_error
+
+    @property
+    def load_progress(self) -> str:
+        return self._load_progress
+
+    @property
+    def loaded_so_far(self) -> int:
+        return self._loaded_so_far
 
     @property
     def total_records(self) -> int:
@@ -156,22 +178,64 @@ class ProcurementDataStore:
         # Format as DD-MMM-YYYY HH:MM (DL4)
         return self._data_as_of.strftime("%d-%b-%Y %H:%M")
 
+    def start_background_load(self, force_refresh: bool = False) -> None:
+        """Initiate background data load without blocking HTTP response."""
+        if self._df is not None and not self._df.empty and not force_refresh:
+            return
+        if self._is_loading or (self._load_task and not self._load_task.done()):
+            return
+        self._is_loading = True
+        self._load_error = None
+        self._load_progress = "Connecting to database..."
+        self._loaded_so_far = 0
+        try:
+            loop = asyncio.get_running_loop()
+            self._load_task = loop.create_task(self._do_background_load(force_refresh=force_refresh))
+        except RuntimeError:
+            try:
+                self._load_task = asyncio.create_task(self._do_background_load(force_refresh=force_refresh))
+            except RuntimeError:
+                pass
+
+    async def _do_background_load(self, force_refresh: bool = False) -> None:
+        async with self._lock:
+            if self._df is not None and not self._df.empty and not force_refresh:
+                self._is_loading = False
+                return
+            try:
+                await self._load_data()
+                self._load_progress = "Ready"
+            except Exception as exc:
+                logger.exception("Failed to load procurement dataset: %s", exc)
+                self._load_error = str(exc)
+                self._load_progress = f"Error: {exc}"
+            finally:
+                self._is_loading = False
+
     async def get_dataframe(self, force_refresh: bool = False) -> pd.DataFrame:
         """Return the loaded DataFrame, loading or refreshing if required."""
         if self._df is not None and not force_refresh:
             return self._df
 
         async with self._lock:
-            # Double-check inside lock
             if self._df is not None and not force_refresh:
                 return self._df
-            await self._load_data()
+            self._is_loading = True
+            self._load_error = None
+            try:
+                await self._load_data()
+            except Exception as exc:
+                self._load_error = str(exc)
+                raise
+            finally:
+                self._is_loading = False
             return self._df
 
     async def _load_data(self) -> None:
-        """Fetch the full view concurrently in bounded batches to avoid Render timeout."""
+        """Fetch the full view in memory-efficient chunks with bounded concurrency."""
         target_db = get_current_database_target() or settings.api_database
         logger.info("Initiating full dataset load from VD_Procurement_Dashboard (%s)", target_db)
+        self._load_progress = "Fetching initial batch..."
 
         batch_size = 10000
         first_resp = await api_request(
@@ -189,11 +253,19 @@ class ProcurementDataStore:
 
         first_rows = first_resp.get("data") or []
         if first_rows:
-            page_frames.append(pd.DataFrame.from_records(first_rows))
+            chunk1 = pd.DataFrame(first_rows)
+            if SPEND_COL in chunk1.columns:
+                chunk1[SPEND_COL] = pd.to_numeric(chunk1[SPEND_COL], errors="coerce").fillna(0.0).astype("float32")
+            if QTY_COL in chunk1.columns:
+                chunk1[QTY_COL] = pd.to_numeric(chunk1[QTY_COL], errors="coerce").fillna(0.0).astype("float32")
+            page_frames.append(chunk1)
+            self._loaded_so_far = len(chunk1)
+            self._load_progress = f"Loaded {self._loaded_so_far:,} of {total_rows:,} records..."
         del first_rows, first_resp
+        gc.collect()
 
         if total_pages > 1:
-            sem = asyncio.Semaphore(4)
+            sem = asyncio.Semaphore(2)
 
             async def _fetch_page(page_num: int) -> pd.DataFrame:
                 async with sem:
@@ -206,15 +278,26 @@ class ProcurementDataStore:
                         database=target_db,
                     )
                     rows = resp.get("data") or []
-                    df_chunk = pd.DataFrame.from_records(rows) if rows else pd.DataFrame()
-                    logger.info("Loaded batch %d/%d (%d rows)", page_num, total_pages, len(rows))
+                    if rows:
+                        df_chunk = pd.DataFrame(rows)
+                        if SPEND_COL in df_chunk.columns:
+                            df_chunk[SPEND_COL] = pd.to_numeric(df_chunk[SPEND_COL], errors="coerce").fillna(0.0).astype("float32")
+                        if QTY_COL in df_chunk.columns:
+                            df_chunk[QTY_COL] = pd.to_numeric(df_chunk[QTY_COL], errors="coerce").fillna(0.0).astype("float32")
+                    else:
+                        df_chunk = pd.DataFrame()
                     del rows, resp
+                    gc.collect()
+                    self._loaded_so_far += len(df_chunk)
+                    self._load_progress = f"Loaded {min(self._loaded_so_far, total_rows):,} of {total_rows:,} records (batch {page_num}/{total_pages})..."
+                    logger.info("Loaded batch %d/%d (%d rows)", page_num, total_pages, len(df_chunk))
                     return df_chunk
 
             tasks = [_fetch_page(p) for p in range(2, total_pages + 1)]
             remaining_frames = await asyncio.gather(*tasks)
             page_frames.extend([f for f in remaining_frames if not f.empty])
             del remaining_frames
+            gc.collect()
 
         if not page_frames:
             if total_rows > 0:
@@ -224,8 +307,10 @@ class ProcurementDataStore:
                 )
             df = pd.DataFrame()
         else:
+            self._load_progress = "Optimizing dataset in memory..."
             df = pd.concat(page_frames, ignore_index=True, copy=False)
             del page_frames
+            gc.collect()
 
         actual_count = len(df)
         logger.info(
@@ -238,10 +323,10 @@ class ProcurementDataStore:
                 total_rows, actual_count
             )
 
-        # Numeric conversions
+        # Numeric conversions (ensure float32 to conserve RAM)
         for numeric_col in (SPEND_COL, QTY_COL):
             if numeric_col in df.columns:
-                df[numeric_col] = pd.to_numeric(df[numeric_col], errors="coerce").fillna(0.0)
+                df[numeric_col] = pd.to_numeric(df[numeric_col], errors="coerce").fillna(0.0).astype("float32")
 
         # Date conversions & formatted display columns
         for date_col, disp_col in (
@@ -276,11 +361,12 @@ class ProcurementDataStore:
                 series = df[col].fillna("(Blank)").astype(str).replace(
                     {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
                 )
-                # Category encoding is beneficial only when repeated values dominate.
                 if len(series) and series.nunique(dropna=False) < len(series) * 0.70:
                     df[col] = series.astype("category")
                 else:
                     df[col] = series
+
+        gc.collect()
 
         logger.info(
             "Procurement DataFrame normalized: rows=%d, columns=%d, memory=%.1f MB",
@@ -297,6 +383,7 @@ class ProcurementDataStore:
         self._total_records = actual_count
         self._data_as_of = datetime.now(timezone.utc)
         self._database = target_db
+        gc.collect()
         logger.info("Procurement dataset ready: %d records from %s", actual_count, target_db)
 
 

@@ -89,23 +89,53 @@ async def procurement_dataset_api(
     refresh: bool = Query(False, description="Force refresh from upstream API"),
 ):
     """
-    Trigger or check in-memory dataset load (Rules DL1–DL4).
-    Only queries the database when opening or clicking 'Refresh Data'.
+    Check or trigger in-memory dataset load (Rules DL1–DL4).
+    Non-blocking: returns status immediately to eliminate proxy timeouts.
     """
-    try:
-        df = await data_store.get_dataframe(force_refresh=refresh)
+    if refresh:
+        data_store.start_background_load(force_refresh=True)
+        return JSONResponse({
+            "status": "loading",
+            "progress": "Refreshing procurement dataset...",
+            "record_count": 0,
+            "data_as_of": "",
+            "data_as_of_formatted": "--",
+            "database": settings.api_database,
+        })
+
+    if data_store.is_loaded:
         return JSONResponse({
             "status": "success",
-            "record_count": len(df),
+            "record_count": data_store.total_records,
             "data_as_of": data_store.data_as_of.isoformat() if data_store.data_as_of else "",
             "data_as_of_formatted": data_store.data_as_of_formatted,
+            "database": data_store._database,
         })
-    except Exception as exc:
-        logger.exception("Failed to load procurement dataset: %s", exc)
+
+    if data_store.load_error:
         return JSONResponse(
             status_code=500,
-            content={"status": "error", "message": str(exc)},
+            content={
+                "status": "error",
+                "error": data_store.load_error,
+                "record_count": 0,
+                "data_as_of": "",
+                "data_as_of_formatted": "--",
+                "database": settings.api_database,
+            },
         )
+
+    if not data_store.is_loading:
+        data_store.start_background_load(force_refresh=False)
+
+    return JSONResponse({
+        "status": "loading",
+        "progress": data_store.load_progress,
+        "record_count": data_store.loaded_so_far,
+        "data_as_of": "",
+        "data_as_of_formatted": "--",
+        "database": settings.api_database,
+    })
 
 
 @router.post("/api/procurement/query")
@@ -122,6 +152,11 @@ async def procurement_query_api(
     - 10 horizontal breakdown charts (CH3–CH10)
     - 13-column detail table page (TB1–TB5)
     """
+    if not data_store.is_loaded:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "loading", "message": "Dataset is currently loading."},
+        )
     granularity = payload.get("granularity", "Monthly")
     measure = payload.get("measure", "Spend")
     date_basis = payload.get("date_basis", "Posting Date")

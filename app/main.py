@@ -40,8 +40,6 @@ async def lifespan(app: FastAPI):
         settings.environment,
         settings.api_database,
     )
-    # Background warm-up dataset load so initial user requests return instantly
-    asyncio.create_task(data_store.get_dataframe())
     yield
     logger.info("Shutting down %s", settings.app_name)
 
