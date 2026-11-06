@@ -169,12 +169,14 @@ class ProcurementDataStore:
             return self._df
 
     async def _load_data(self) -> None:
-        """Fetch all rows from VD_Procurement_Dashboard via batching."""
+        """Fetch the full view in small sequential batches to limit Render memory spikes."""
         target_db = get_current_database_target() or settings.api_database
         logger.info("Initiating full dataset load from VD_Procurement_Dashboard (%s)", target_db)
 
-        # 1. First fetch page 1 to check totalRows and totalPages
-        batch_size = 10000
+        # Keep each raw API response short-lived. Building one giant Python list of
+        # 70k x 56 dictionaries before constructing a DataFrame can exceed the
+        # memory limit of a small Render instance.
+        batch_size = 5000
         first_resp = await api_request(
             table="VD_Procurement_Dashboard",
             action="select",
@@ -184,67 +186,80 @@ class ProcurementDataStore:
             database=target_db,
         )
 
-        total_rows = int(first_resp.get("totalRows", 0))
-        total_pages = int(first_resp.get("totalPages", 1))
-        all_rows = list(first_resp.get("data", []))
+        total_rows = int(first_resp.get("totalRows", 0) or 0)
+        total_pages = int(first_resp.get("totalPages", 1) or 1)
+        page_frames: list[pd.DataFrame] = []
 
-        # 2. Concurrently fetch remaining pages if total_pages > 1
-        if total_pages > 1:
-            async def _fetch_page(page_num: int):
-                resp = await api_request(
-                    table="VD_Procurement_Dashboard",
-                    action="select",
-                    columns="*",
-                    page=page_num,
-                    limit=batch_size,
-                    database=target_db,
-                )
-                return resp.get("data", [])
+        first_rows = first_resp.get("data") or []
+        if first_rows:
+            page_frames.append(pd.DataFrame.from_records(first_rows))
+        del first_rows, first_resp
 
-            tasks = [_fetch_page(p) for p in range(2, total_pages + 1)]
-            results = await asyncio.gather(*tasks)
-            for page_data in results:
-                all_rows.extend(page_data)
-
-        actual_count = len(all_rows)
-        logger.info("Retrieved %d records (reported total: %d)", actual_count, total_rows)
-
-        if actual_count == 0 and total_rows > 0:
-            raise ApiError(
-                f"Failed to load records: expected {total_rows}, received 0",
+        for page_num in range(2, total_pages + 1):
+            response = await api_request(
                 table="VD_Procurement_Dashboard",
+                action="select",
+                columns="*",
+                page=page_num,
+                limit=batch_size,
+                database=target_db,
+            )
+            page_rows = response.get("data") or []
+            if page_rows:
+                page_frames.append(pd.DataFrame.from_records(page_rows))
+            logger.info(
+                "Loaded procurement batch %d/%d (%d rows in batch)",
+                page_num, total_pages, len(page_rows)
+            )
+            del page_rows, response
+
+        if not page_frames:
+            if total_rows > 0:
+                raise ApiError(
+                    f"Failed to load records: expected {total_rows}, received 0",
+                    table="VD_Procurement_Dashboard",
+                )
+            df = pd.DataFrame()
+        else:
+            df = pd.concat(page_frames, ignore_index=True, copy=False)
+            del page_frames
+
+        actual_count = len(df)
+        logger.info(
+            "Retrieved %d records (reported total: %d); DataFrame constructed",
+            actual_count, total_rows
+        )
+        if total_rows and actual_count < total_rows:
+            logger.warning(
+                "Procurement dataset is incomplete: expected %d rows, received %d",
+                total_rows, actual_count
             )
 
-        # 3. Build and optimize in-memory DataFrame
-        df = pd.DataFrame(all_rows)
-
         # Numeric conversions
-        if SPEND_COL in df.columns:
-            df.loc[:, SPEND_COL] = pd.to_numeric(df[SPEND_COL], errors="coerce").fillna(0.0)
-
-        if QTY_COL in df.columns:
-            df.loc[:, QTY_COL] = pd.to_numeric(df[QTY_COL], errors="coerce").fillna(0.0)
+        for numeric_col in (SPEND_COL, QTY_COL):
+            if numeric_col in df.columns:
+                df[numeric_col] = pd.to_numeric(df[numeric_col], errors="coerce").fillna(0.0)
 
         # Date conversions & formatted display columns
-        for date_col, disp_col in [
+        for date_col, disp_col in (
             (POSTING_DATE_COL, "Posting_Date_Formatted"),
             (VENDOR_DOC_DATE_COL, "Vendor_Doc_Date_Formatted"),
-        ]:
+        ):
             if date_col in df.columns:
                 dt_series = pd.to_datetime(df[date_col], errors="coerce")
                 df[disp_col] = dt_series.dt.strftime("%d-%b-%Y").fillna("")
                 df[f"{date_col}_ISO"] = dt_series.dt.strftime("%Y-%m-%d").fillna("")
 
         # Handle Period integers
-        for p_col in [
+        for p_col in (
             "Posting Year", "Posting Month", "Posting Week", "Posting Day",
             "Vendor Doc Year", "Vendor Doc Month", "Vendor Doc Week", "Vendor Doc Day",
-        ]:
+        ):
             if p_col in df.columns:
-                df[p_col] = pd.to_numeric(df[p_col], errors="coerce").fillna(0).astype(int)
+                df[p_col] = pd.to_numeric(df[p_col], errors="coerce").fillna(0).astype("int32")
 
-        # String normalization (FT9: Blank vs NA)
-        # Convert NaN, None, empty string to '(Blank)', keeping literal 'NA' distinct
+        # Normalize categorical text and use pandas category dtype for low-cardinality
+        # columns; this substantially reduces RAM for repeated vendor/location/status values.
         categorical_cols = [
             DOC_COL, "Document Type", PURCHASE_TYPE_COL, CURRENCY_COL,
             VENDOR_COL, VENDOR_GROUP_COL, "Industry", "Vendor City", "Vendor State", "Vendor Country",
@@ -255,21 +270,31 @@ class ProcurementDataStore:
 
         for col in categorical_cols:
             if col in df.columns:
-                df[col] = df[col].astype(str).replace(
+                series = df[col].fillna("(Blank)").astype(str).replace(
                     {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
                 )
+                # Category encoding is beneficial only when repeated values dominate.
+                if len(series) and series.nunique(dropna=False) < len(series) * 0.70:
+                    df[col] = series.astype("category")
+                else:
+                    df[col] = series
 
-        # Precompute vectorized grouping and display columns for lightning-fast queries
+        logger.info(
+            "Procurement DataFrame normalized: rows=%d, columns=%d, memory=%.1f MB",
+            len(df), len(df.columns),
+            float(df.memory_usage(index=True, deep=True).sum()) / (1024 * 1024)
+        )
+
+        logger.info("Starting procurement date/grouping precomputation")
         _precompute_dataframe_columns(df)
+        logger.info("Procurement date/grouping precomputation complete")
 
-        # Invalidate caches
         clear_query_caches()
-
-        # Update store state
         self._df = df
         self._total_records = actual_count
         self._data_as_of = datetime.now(timezone.utc)
         self._database = target_db
+        logger.info("Procurement dataset ready: %d records from %s", actual_count, target_db)
 
 
 # Global singleton access
