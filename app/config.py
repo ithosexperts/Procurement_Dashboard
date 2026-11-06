@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     public_base_url: str = "http://127.0.0.1:8000"
 
     # ── Company API Integration ────────────────────────────────────
-    # REST-style database gateway: https://api.hosexperts.com:85/apiv2.php
-    api_base_url: str = "https://api.hosexperts.com:85/apiv2.php"
+    # REST-style database gateway: https://api.hosexperts.com:85/apiv3.php
+    api_base_url: str = "https://api.hosexperts.com:85/apiv3.php"
     api_auth_token: str = ""
     api_username: str = ""
     api_password: str = ""
