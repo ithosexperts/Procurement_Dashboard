@@ -1431,86 +1431,6 @@
     }
 
     /**
-     * Chart.js Custom Plugin: Render Value Labels on Bar Graphs (CH1–CH10).
-     * Displays compact currency (Spend) or formatted number (Quantity) directly on bars.
-     */
-    const barValueLabelsPlugin = {
-        id: "barValueLabels",
-        afterDatasetsDraw(chart) {
-            const { ctx, chartArea } = chart;
-            if (!chartArea) return;
-            const isHorizontal = chart.config.options.indexAxis === "y";
-            const isSpend = AppState.measure === "Spend";
-
-            chart.data.datasets.forEach((dataset, datasetIdx) => {
-                const meta = chart.getDatasetMeta(datasetIdx);
-                if (meta.hidden) return;
-
-                meta.data.forEach((element, idx) => {
-                    const raw = dataset.data[idx];
-                    if (raw === null || raw === undefined || raw === 0 || isNaN(raw)) return;
-
-                    let label = "";
-                    if (isSpend) {
-                        label = IndianCurrencyFormatter.formatCompact(raw, 1);
-                    } else {
-                        label = Number(raw).toLocaleString("en-IN", { maximumFractionDigits: 0 });
-                    }
-
-                    ctx.save();
-                    ctx.font = "600 10.5px 'Plus Jakarta Sans', sans-serif";
-
-                    if (isHorizontal) {
-                        const textWidth = ctx.measureText(label).width;
-                        const yPos = element.y + 3.5;
-
-                        if (raw >= 0) {
-                            const xPos = element.x + 5;
-                            if (xPos + textWidth > chartArea.right - 2) {
-                                ctx.fillStyle = "#ffffff";
-                                ctx.textAlign = "right";
-                                ctx.fillText(label, element.x - 5, yPos);
-                            } else {
-                                ctx.fillStyle = "#334155";
-                                ctx.textAlign = "left";
-                                ctx.fillText(label, xPos, yPos);
-                            }
-                        } else {
-                            const xPos = element.x - 5;
-                            ctx.fillStyle = "#dc2626";
-                            ctx.textAlign = "right";
-                            ctx.fillText(label, xPos, yPos);
-                        }
-                    } else {
-                        const xPos = element.x;
-                        if (raw >= 0) {
-                            const yPos = element.y - 4;
-                            ctx.textAlign = "center";
-                            if (yPos < chartArea.top + 8) {
-                                ctx.fillStyle = "#ffffff";
-                                ctx.fillText(label, xPos, element.y + 13);
-                            } else {
-                                ctx.fillStyle = "#1e293b";
-                                ctx.fillText(label, xPos, yPos);
-                            }
-                        } else {
-                            const yPos = element.y + 12;
-                            ctx.textAlign = "center";
-                            ctx.fillStyle = "#dc2626";
-                            ctx.fillText(label, xPos, yPos);
-                        }
-                    }
-                    ctx.restore();
-                });
-            });
-        }
-    };
-
-    if (typeof Chart !== "undefined" && Chart.register) {
-        Chart.register(barValueLabelsPlugin);
-    }
-
-    /**
      * Render Main Vertical Bar Chart (CH1, CH2).
      */
     function renderMainChart(chartData) {
@@ -1534,7 +1454,6 @@
                     },
                     y: {
                         beginAtZero: true,
-                        grace: "5%",
                         ticks: {
                             callback: function (val) {
                                 if (AppState.measure === "Spend") {
@@ -1618,7 +1537,6 @@
                     scales: {
                         x: {
                             beginAtZero: true,
-                            grace: "8%",
                             ticks: {
                                 callback: function (val) {
                                     if (AppState.measure === "Spend") {
