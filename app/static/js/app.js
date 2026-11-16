@@ -893,69 +893,58 @@
         }
 
         // Export PDF (Req 2)
-        if (DOM.btnExportPdf) {
-            DOM.btnExportPdf.addEventListener("click", function () {
-                const granElem = document.getElementById("printReportGranularity");
-                if (granElem) {
-                    granElem.textContent = `${AppState.granularity || 'All'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}`;
-                }
-                const dateElem = document.getElementById("printReportDate");
-                if (dateElem && DOM.dataAsOfText) {
-                    dateElem.textContent = DOM.dataAsOfText.textContent;
-                }
-                window.print();
+        const btnPdf = document.getElementById("btnExportPdf");
+        if (btnPdf) {
+            btnPdf.addEventListener("click", function (e) {
+                e.preventDefault();
+                exportPdf();
             });
         }
 
         // Collapse / Expand Filter Sidebar (Req 8)
-        if (DOM.btnToggleFilterSidebar) {
-            DOM.btnToggleFilterSidebar.addEventListener("click", function () {
-                if (!DOM.filterSidebarCol) return;
-                const isHidden = DOM.filterSidebarCol.classList.contains("d-none");
-                if (isHidden) {
-                    DOM.filterSidebarCol.classList.remove("d-none");
-                    if (DOM.mainDashboardView) {
-                        DOM.mainDashboardView.classList.remove("col-12");
-                        DOM.mainDashboardView.classList.add("col-xl-9", "col-lg-8");
-                    }
-                    if (DOM.textToggleSidebar) DOM.textToggleSidebar.textContent = "Hide Filters";
-                    if (DOM.iconToggleSidebar) DOM.iconToggleSidebar.className = "bi bi-layout-sidebar-inset";
-                } else {
-                    DOM.filterSidebarCol.classList.add("d-none");
-                    if (DOM.mainDashboardView) {
-                        DOM.mainDashboardView.classList.remove("col-xl-9", "col-lg-8");
-                        DOM.mainDashboardView.classList.add("col-12");
-                    }
-                    if (DOM.textToggleSidebar) DOM.textToggleSidebar.textContent = "Show Filters";
-                    if (DOM.iconToggleSidebar) DOM.iconToggleSidebar.className = "bi bi-layout-sidebar";
-                }
-                window.dispatchEvent(new Event("resize"));
+        const btnToggleSidebar = document.getElementById("btnToggleFilterSidebar");
+        if (btnToggleSidebar) {
+            btnToggleSidebar.addEventListener("click", function (e) {
+                e.preventDefault();
+                toggleFilterSidebar();
             });
         }
 
         // Collapse / Expand All Filter Sections (Req 8)
-        if (DOM.btnToggleAllSections) {
-            DOM.btnToggleAllSections.addEventListener("click", function () {
-                const accordionCollapses = document.querySelectorAll("#filterAccordion .accordion-collapse");
-                const anyClosed = Array.from(accordionCollapses).some(el => !el.classList.contains("show"));
-
-                accordionCollapses.forEach(el => {
-                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
-                    if (anyClosed) {
-                        bsCollapse.show();
-                    } else {
-                        bsCollapse.hide();
-                    }
-                });
-
-                if (DOM.textToggleAll) {
-                    DOM.textToggleAll.textContent = anyClosed ? "Collapse All" : "Expand All";
-                }
-                if (DOM.iconToggleAll) {
-                    DOM.iconToggleAll.className = anyClosed ? "bi bi-arrows-collapse" : "bi bi-arrows-expand";
-                }
+        const btnToggleSections = document.getElementById("btnToggleAllSections");
+        if (btnToggleSections) {
+            btnToggleSections.addEventListener("click", function (e) {
+                e.preventDefault();
+                toggleAllFilterSections();
             });
         }
+
+        // Global delegated click handler as fallback
+        document.addEventListener("click", function (e) {
+            const pdfTarget = e.target.closest("#btnExportPdf");
+            if (pdfTarget && !pdfTarget.hasAttribute("data-handled")) {
+                pdfTarget.setAttribute("data-handled", "true");
+                setTimeout(() => pdfTarget.removeAttribute("data-handled"), 400);
+                exportPdf();
+                return;
+            }
+
+            const sidebarTarget = e.target.closest("#btnToggleFilterSidebar");
+            if (sidebarTarget && !sidebarTarget.hasAttribute("data-handled")) {
+                sidebarTarget.setAttribute("data-handled", "true");
+                setTimeout(() => sidebarTarget.removeAttribute("data-handled"), 400);
+                toggleFilterSidebar();
+                return;
+            }
+
+            const sectionsTarget = e.target.closest("#btnToggleAllSections");
+            if (sectionsTarget && !sectionsTarget.hasAttribute("data-handled")) {
+                sectionsTarget.setAttribute("data-handled", "true");
+                setTimeout(() => sectionsTarget.removeAttribute("data-handled"), 400);
+                toggleAllFilterSections();
+                return;
+            }
+        });
 
         // Editable Selection for Number of Top Vendors (Req 14)
         if (DOM.selectTopVendorsLimit) {
@@ -1005,6 +994,247 @@
                     executeQuery();
                 });
             });
+        }
+    }
+
+    /**
+     * Collapse or Expand the left Filter Sidebar (Req 8).
+     * When hidden, charts view expands to 100% full width (col-12).
+     */
+    function toggleFilterSidebar() {
+        const sidebar = document.getElementById("filterSidebarCol");
+        const mainView = document.getElementById("mainDashboardView");
+        const toggleBtn = document.getElementById("btnToggleFilterSidebar");
+        const toggleText = document.getElementById("textToggleSidebar");
+        const toggleIcon = document.getElementById("iconToggleSidebar");
+
+        if (!sidebar) return;
+
+        const isHidden = sidebar.classList.contains("d-none") || sidebar.style.display === "none";
+
+        if (isHidden) {
+            sidebar.classList.remove("d-none");
+            sidebar.style.display = "";
+            if (mainView) {
+                mainView.classList.remove("col-12");
+                mainView.classList.add("col-xl-9", "col-lg-8");
+            }
+            if (toggleText) toggleText.textContent = "Hide Filters";
+            if (toggleIcon) toggleIcon.className = "bi bi-layout-sidebar-inset";
+            if (toggleBtn) {
+                toggleBtn.classList.remove("btn-primary");
+                toggleBtn.classList.add("btn-outline-secondary");
+            }
+        } else {
+            sidebar.classList.add("d-none");
+            sidebar.style.display = "none";
+            if (mainView) {
+                mainView.classList.remove("col-xl-9", "col-lg-8");
+                mainView.classList.add("col-12");
+            }
+            if (toggleText) toggleText.textContent = "Show Filters";
+            if (toggleIcon) toggleIcon.className = "bi bi-layout-sidebar";
+            if (toggleBtn) {
+                toggleBtn.classList.remove("btn-outline-secondary");
+                toggleBtn.classList.add("btn-primary");
+            }
+        }
+
+        setTimeout(() => {
+            window.dispatchEvent(new Event("resize"));
+            for (const k in ChartInstances) {
+                if (ChartInstances[k]) ChartInstances[k].resize();
+            }
+        }, 120);
+    }
+
+    /**
+     * Collapse or Expand all 8 filter accordion sections simultaneously (Req 8).
+     */
+    function toggleAllFilterSections() {
+        const accordionCollapses = document.querySelectorAll("#filterAccordion .accordion-collapse");
+        const anyClosed = Array.from(accordionCollapses).some(el => !el.classList.contains("show"));
+
+        accordionCollapses.forEach(el => {
+            if (typeof bootstrap !== "undefined" && bootstrap.Collapse) {
+                const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+                if (anyClosed) {
+                    bsCollapse.show();
+                } else {
+                    bsCollapse.hide();
+                }
+            } else {
+                if (anyClosed) {
+                    el.classList.add("show");
+                } else {
+                    el.classList.remove("show");
+                }
+            }
+        });
+
+        const toggleText = document.getElementById("textToggleAll");
+        const toggleIcon = document.getElementById("iconToggleAll");
+        if (toggleText) toggleText.textContent = anyClosed ? "Collapse All" : "Expand All";
+        if (toggleIcon) toggleIcon.className = anyClosed ? "bi bi-arrows-collapse" : "bi bi-arrows-expand";
+    }
+
+    /**
+     * Export PDF (Req 2): Generates a high-resolution PDF report containing ONLY the bar graphs
+     * and their values, KPI strip, and report header. Excludes transactional data and filter selections.
+     * Uses client-side html2pdf with fallback to window.print().
+     */
+    function exportPdf() {
+        const granElem = document.getElementById("printReportGranularity");
+        if (granElem) {
+            granElem.textContent = `${AppState.granularity || 'All'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}`;
+        }
+        const dateElem = document.getElementById("printReportDate");
+        if (dateElem && DOM.dataAsOfText) {
+            dateElem.textContent = DOM.dataAsOfText.textContent;
+        }
+
+        const btn = document.getElementById("btnExportPdf");
+        const originalHtml = btn ? btn.innerHTML : "";
+
+        if (typeof html2pdf !== "undefined") {
+            if (btn) {
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span><span>Exporting...</span>`;
+                btn.disabled = true;
+            }
+
+            const container = document.createElement("div");
+            container.className = "pdf-export-content p-4 bg-white text-dark";
+            container.style.width = "1100px";
+            container.style.margin = "0 auto";
+            container.style.fontFamily = "'Plus Jakarta Sans', sans-serif";
+
+            // Header
+            const header = document.createElement("div");
+            header.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1e40af; padding-bottom: 12px; margin-bottom: 18px;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: #1e3a8a;">Procurement Dashboard Report</h2>
+                        <span style="font-size: 12px; color: #64748b;">HoseXperts Procurement Analytics &bull; OperationsDB</span>
+                    </div>
+                    <div style="text-align: right; font-size: 12px;">
+                        <div style="font-weight: 600; color: #1e293b;">${AppState.granularity || 'Monthly'} &bull; ${AppState.measure || 'Spend'} &bull; ${AppState.dateBasis || 'Posting Date'}</div>
+                        <div style="color: #64748b;">${DOM.dataAsOfText ? DOM.dataAsOfText.textContent : 'Data as of Latest'}</div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(header);
+
+            // KPI strip
+            const spendVal = DOM.kpiFilteredSpend ? DOM.kpiFilteredSpend.textContent : "₹0";
+            const rowsVal = DOM.kpiFilteredRows ? DOM.kpiFilteredRows.textContent : "0";
+            const granText = `${AppState.granularity || 'Monthly'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}`;
+            const kpiRow = document.createElement("div");
+            kpiRow.innerHTML = `
+                <div style="display: flex; gap: 14px; margin-bottom: 20px;">
+                    <div style="flex: 1; padding: 12px 16px; border: 1px solid #e2e8f0; border-left: 4px solid #16a34a; border-radius: 6px; background: #ffffff;">
+                        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Filtered Spend</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #16a34a; margin-top: 3px;">${spendVal}</div>
+                    </div>
+                    <div style="flex: 1; padding: 12px 16px; border: 1px solid #e2e8f0; border-left: 4px solid #0284c7; border-radius: 6px; background: #ffffff;">
+                        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Filtered Rows</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #0284c7; margin-top: 3px;">${rowsVal}</div>
+                    </div>
+                    <div style="flex: 1.2; padding: 12px 16px; border: 1px solid #e2e8f0; border-left: 4px solid #475569; border-radius: 6px; background: #ffffff;">
+                        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active Granularity</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #1e293b; margin-top: 4px;">${granText}</div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(kpiRow);
+
+            // Chart Canvas to Image helper
+            function chartToElement(canvasId, titleText) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return null;
+                const wrap = document.createElement("div");
+                wrap.style.border = "1px solid #e2e8f0";
+                wrap.style.borderRadius = "6px";
+                wrap.style.marginBottom = "14px";
+                wrap.style.background = "#ffffff";
+                wrap.style.pageBreakInside = "avoid";
+                wrap.style.breakInside = "avoid";
+
+                const title = document.createElement("div");
+                title.style.padding = "6px 12px";
+                title.style.background = "#f8fafc";
+                title.style.borderBottom = "1px solid #e2e8f0";
+                title.style.fontSize = "12px";
+                title.style.fontWeight = "700";
+                title.style.color = "#0f172a";
+                title.textContent = titleText;
+                wrap.appendChild(title);
+
+                try {
+                    const img = document.createElement("img");
+                    img.src = canvas.toDataURL("image/png");
+                    img.style.width = "100%";
+                    img.style.display = "block";
+                    img.style.padding = "6px";
+                    wrap.appendChild(img);
+                } catch (e) {
+                    console.warn("Could not export canvas to image:", canvasId, e);
+                }
+                return wrap;
+            }
+
+            // Main Period Bar Chart
+            const mainTitle = DOM.mainChartTitle ? DOM.mainChartTitle.textContent : "Procurement by Period";
+            const mainChartWrap = chartToElement("mainChartCanvas", mainTitle);
+            if (mainChartWrap) container.appendChild(mainChartWrap);
+
+            // 10 Breakdown Bar Charts in 2 columns
+            const grid = document.createElement("div");
+            grid.style.display = "grid";
+            grid.style.gridTemplateColumns = "1fr 1fr";
+            grid.style.gap = "12px";
+
+            const chartsList = [
+                { id: "chartImportDomestic", title: "1. Import vs Domestic" },
+                { id: "chartReceivingState", title: "2. Receiving State" },
+                { id: "chartItemGroup", title: "3. Item Group" },
+                { id: "chartSubGroup1", title: "4. Sub Group 1" },
+                { id: "chartSubGroup2", title: "5. Sub Group 2" },
+                { id: "chartBrand", title: "6. Brand" },
+                { id: "chartBuyer", title: "7. Buyer" },
+                { id: "chartPurchaseType", title: "8. Credit vs Advance" },
+                { id: "chartTopVendors", title: (DOM.titleTopVendors ? DOM.titleTopVendors.textContent : "9. Top Vendors") },
+                { id: "chartVendorGroup", title: "10. Vendor Group" }
+            ];
+
+            chartsList.forEach(c => {
+                const el = chartToElement(c.id, c.title);
+                if (el) grid.appendChild(el);
+            });
+            container.appendChild(grid);
+
+            const opt = {
+                margin: [8, 8, 8, 8],
+                filename: `Procurement_Dashboard_${AppState.granularity || 'Report'}_${new Date().toISOString().slice(0, 10)}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+
+            html2pdf().set(opt).from(container).save().then(() => {
+                if (btn) {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }
+            }).catch(err => {
+                console.warn("html2pdf save failed, falling back to window.print():", err);
+                if (btn) {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }
+                window.print();
+            });
+        } else {
+            window.print();
         }
     }
 
@@ -1624,14 +1854,21 @@
         }
     }
 
-    // Initialize on DOM load
-    document.addEventListener("DOMContentLoaded", function () {
+    // Initialize on DOM load (handles both early and late script execution)
+    function initialize() {
         setupEventListeners();
         updateGatingVisibility();
         loadProcurementDataset(false);
-    });
+    }
 
-    // Expose for testing
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initialize);
+    } else {
+        // DOM is already ready (e.g. script loaded after parsing or in iframe)
+        initialize();
+    }
+
+    // Expose for testing and direct button invocation
     window.ProcurementApp = {
         state: AppState,
         isFlowReady: isFlowReady,
@@ -1639,7 +1876,10 @@
         executeQuery: executeQuery,
         loadDataset: loadProcurementDataset,
         multiSelectManager: MultiSelectManager,
-        indianCurrencyFormatter: IndianCurrencyFormatter
+        indianCurrencyFormatter: IndianCurrencyFormatter,
+        toggleFilterSidebar: toggleFilterSidebar,
+        toggleAllFilterSections: toggleAllFilterSections,
+        exportPdf: exportPdf
     };
 
 })();

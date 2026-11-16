@@ -39,11 +39,11 @@
         </div>
     </div>
     <div class="col-md-6 text-md-end d-flex justify-content-md-end gap-2 align-items-center">
-        <button id="btnToggleFilterSidebar" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm" type="button" title="Collapse or Expand Filters Sidebar">
+        <button id="btnToggleFilterSidebar" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm" type="button" title="Collapse or Expand Filters Sidebar" onclick="if(window.ProcurementApp && window.ProcurementApp.toggleFilterSidebar){window.ProcurementApp.toggleFilterSidebar();}">
             <i class="bi bi-layout-sidebar-inset" id="iconToggleSidebar"></i>
             <span id="textToggleSidebar">Hide Filters</span>
         </button>
-        <button id="btnExportPdf" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 shadow-sm" type="button" title="Export bar graphs and values to PDF">
+        <button id="btnExportPdf" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 shadow-sm" type="button" title="Export bar graphs and values to PDF" onclick="if(window.ProcurementApp && window.ProcurementApp.exportPdf){window.ProcurementApp.exportPdf();}else{window.print();}">
             <i class="bi bi-file-earmark-pdf"></i>
             <span>Export PDF</span>
         </button>
@@ -155,7 +155,7 @@
                             <span class="badge rounded-pill bg-light text-secondary border" id="activeFilterBadge">0</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <button type="button" class="btn btn-link btn-xs text-primary text-decoration-none p-0 fw-semibold d-flex align-items-center gap-1" id="btnToggleAllSections" title="Expand or collapse all filter sections" style="font-size: 0.775rem;">
+                            <button type="button" class="btn btn-link btn-xs text-primary text-decoration-none p-0 fw-semibold d-flex align-items-center gap-1" id="btnToggleAllSections" title="Expand or collapse all filter sections" style="font-size: 0.775rem;" onclick="if(window.ProcurementApp && window.ProcurementApp.toggleAllFilterSections){window.ProcurementApp.toggleAllFilterSections();}">
                                 <i class="bi bi-arrows-expand" id="iconToggleAll"></i>
                                 <span id="textToggleAll">Expand All</span>
                             </button>
