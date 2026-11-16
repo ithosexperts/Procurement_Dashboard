@@ -53,7 +53,7 @@ def _resolve_database(explicit_database: str | None = None) -> str:
     context_target = get_current_database_target()
     if context_target:
         return context_target
-    return settings.api_database or "Test_OperationsDB"
+    return settings.api_database or "OperationsDB"
 
 
 async def api_request(
@@ -65,6 +65,7 @@ async def api_request(
     order_by: str = "",
     limit: int = 0,
     page: int = 0,
+    filters: dict[str, Any] | None = None,
     data: dict[str, Any] | None = None,
     database: str | None = None,
     timeout: float | None = None,
@@ -102,6 +103,9 @@ async def api_request(
         payload["where"] = where
     if order_by:
         payload["order_by"] = order_by
+        payload["orderBy"] = order_by
+    if filters:
+        payload["filters"] = filters
     if limit > 0:
         payload["limit"] = limit
     if page > 0:

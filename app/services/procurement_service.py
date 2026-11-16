@@ -188,6 +188,8 @@ class ProcurementDataStore:
         self._load_error = None
         self._load_progress = "Connecting to database..."
         self._loaded_so_far = 0
+        if force_refresh:
+            clear_query_caches()
         try:
             loop = asyncio.get_running_loop()
             self._load_task = loop.create_task(self._do_background_load(force_refresh=force_refresh))
@@ -233,15 +235,17 @@ class ProcurementDataStore:
 
     async def _load_data(self) -> None:
         """Fetch the full view in memory-efficient chunks with bounded concurrency."""
-        target_db = get_current_database_target() or settings.api_database
+        target_db = get_current_database_target() or settings.api_database or "OperationsDB"
         logger.info("Initiating full dataset load from VD_Procurement_Dashboard (%s)", target_db)
         self._load_progress = "Fetching initial batch..."
 
         batch_size = 10000
+        stable_order = "DocNum,Document,Quantity,UoM"
         first_resp = await api_request(
             table="VD_Procurement_Dashboard",
             action="select",
             columns="*",
+            order_by=stable_order,
             page=1,
             limit=batch_size,
             database=target_db,
@@ -255,9 +259,9 @@ class ProcurementDataStore:
         if first_rows:
             chunk1 = pd.DataFrame(first_rows)
             if SPEND_COL in chunk1.columns:
-                chunk1[SPEND_COL] = pd.to_numeric(chunk1[SPEND_COL], errors="coerce").fillna(0.0).astype("float32")
+                chunk1[SPEND_COL] = pd.to_numeric(chunk1[SPEND_COL], errors="coerce").fillna(0.0).astype("float64")
             if QTY_COL in chunk1.columns:
-                chunk1[QTY_COL] = pd.to_numeric(chunk1[QTY_COL], errors="coerce").fillna(0.0).astype("float32")
+                chunk1[QTY_COL] = pd.to_numeric(chunk1[QTY_COL], errors="coerce").fillna(0.0).astype("float64")
             page_frames.append(chunk1)
             self._loaded_so_far = len(chunk1)
             self._load_progress = f"Loaded {self._loaded_so_far:,} of {total_rows:,} records..."
@@ -273,6 +277,7 @@ class ProcurementDataStore:
                         table="VD_Procurement_Dashboard",
                         action="select",
                         columns="*",
+                        order_by=stable_order,
                         page=page_num,
                         limit=batch_size,
                         database=target_db,
@@ -281,9 +286,9 @@ class ProcurementDataStore:
                     if rows:
                         df_chunk = pd.DataFrame(rows)
                         if SPEND_COL in df_chunk.columns:
-                            df_chunk[SPEND_COL] = pd.to_numeric(df_chunk[SPEND_COL], errors="coerce").fillna(0.0).astype("float32")
+                            df_chunk[SPEND_COL] = pd.to_numeric(df_chunk[SPEND_COL], errors="coerce").fillna(0.0).astype("float64")
                         if QTY_COL in df_chunk.columns:
-                            df_chunk[QTY_COL] = pd.to_numeric(df_chunk[QTY_COL], errors="coerce").fillna(0.0).astype("float32")
+                            df_chunk[QTY_COL] = pd.to_numeric(df_chunk[QTY_COL], errors="coerce").fillna(0.0).astype("float64")
                     else:
                         df_chunk = pd.DataFrame()
                     del rows, resp
@@ -323,10 +328,10 @@ class ProcurementDataStore:
                 total_rows, actual_count
             )
 
-        # Numeric conversions (ensure float32 to conserve RAM)
+        # Numeric conversions (float64 to preserve exact monetary precision)
         for numeric_col in (SPEND_COL, QTY_COL):
             if numeric_col in df.columns:
-                df[numeric_col] = pd.to_numeric(df[numeric_col], errors="coerce").fillna(0.0).astype("float32")
+                df[numeric_col] = pd.to_numeric(df[numeric_col], errors="coerce").fillna(0.0).astype("float64")
 
         # Date conversions & formatted display columns
         for date_col, disp_col in (
@@ -876,7 +881,7 @@ def _compute_filter_options(
 ) -> dict[str, Any]:
     """Compute faceted dropdown values and counts for all 8 filter sections (FT5, FT6, FT7)."""
     f_hash = _hash_filters(filters)
-    cache_key = (date_basis, f_hash)
+    cache_key = (id(df), date_basis, f_hash)
     if cache_key in _facet_cache:
         return _facet_cache[cache_key]
 
@@ -1092,7 +1097,7 @@ def _sync_query_procurement_data(
     # 1. Filter mask
     t0 = time.perf_counter()
     f_hash = _hash_filters(filters)
-    mask_key = (date_basis, f_hash)
+    mask_key = (id(df), date_basis, f_hash)
 
     if mask_key in _mask_cache:
         active_mask = _mask_cache[mask_key]
@@ -1147,7 +1152,7 @@ def _sync_query_procurement_data(
         t_main = time.perf_counter() - t0
 
         t0 = time.perf_counter()
-        bd_key = (date_basis, f_hash, measure)
+        bd_key = (id(df), date_basis, f_hash, measure)
         if bd_key in _breakdown_cache:
             breakdown_charts = _breakdown_cache[bd_key]
         else:
@@ -1196,9 +1201,9 @@ def _sync_query_procurement_data(
     main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis)
     t_main = time.perf_counter() - t0
 
-    # 4. Breakdown charts (cached by date_basis, filter_hash, measure)
+    # 4. Breakdown charts (cached by dataframe id, date_basis, filter_hash, measure)
     t0 = time.perf_counter()
-    bd_key = (date_basis, f_hash, measure)
+    bd_key = (id(df), date_basis, f_hash, measure)
     if bd_key in _breakdown_cache:
         breakdown_charts = _breakdown_cache[bd_key]
     else:
