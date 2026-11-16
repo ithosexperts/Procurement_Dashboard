@@ -13,7 +13,7 @@
 </head>
 <body class="bg-light">
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand d-flex align-items-center" href="/" aria-label="HoseXperts Procurement Dashboard">
                 <img
@@ -24,7 +24,7 @@
                     height="44"
                     loading="eager"
                 >
-                <span class="ms-3 badge bg-secondary text-light fw-normal py-1 px-2" style="font-size: 0.75rem;">Procurement Dashboard</span>
+                <span class="ms-3 badge bg-white bg-opacity-25 text-white fw-normal py-1 px-2 border border-white border-opacity-25" style="font-size: 0.75rem;">Procurement Dashboard</span>
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
@@ -39,8 +39,8 @@
                 </ul>
 
                 <div class="d-flex align-items-center gap-3">
-                    <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 px-2 py-1">
-                        <i class="bi bi-database me-1"></i> {{ database or 'Test_OperationsDB' }}
+                    <span class="badge bg-white bg-opacity-25 text-white border border-white border-opacity-25 px-2 py-1">
+                        <i class="bi bi-database me-1"></i> {{ database or 'OperationsDB' }}
                     </span>
                 </div>
             </div>
