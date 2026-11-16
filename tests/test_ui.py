@@ -79,14 +79,14 @@ async def test_dashboard_ui_selection_prompt_and_gating():
 
 @pytest.mark.asyncio
 async def test_dashboard_ui_buttons_and_header():
-    """Verify Refresh Data and Reset Filters are two separate buttons (DL5) and timestamp exists."""
+    """Verify Refresh Data button, timestamp, and absence of top reset filters button."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/")
 
     html = resp.text
     assert 'id="btnRefreshData"' in html
-    assert 'id="btnResetFilters"' in html
+    assert 'id="btnResetFilters"' not in html
     assert 'id="btnResetGranularity"' in html
     assert 'id="dataAsOfText"' in html
 
