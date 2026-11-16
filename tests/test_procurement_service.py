@@ -193,3 +193,33 @@ async def test_query_caches_invalidate_on_refresh():
     assert len(_facet_cache) == 0
     assert len(_breakdown_cache) == 0
 
+
+def test_top_vendors_editable_limit():
+    """Verify that _compute_top_vendors_chart respects the limit parameter (Req 14)."""
+    from app.services.procurement_service import _compute_top_vendors_chart, VENDOR_COL, SPEND_COL
+
+    # Create dummy dataframe with 25 vendors
+    records = []
+    for i in range(1, 26):
+        records.append({
+            VENDOR_COL: f"Vendor_{i:02d}",
+            SPEND_COL: float(1000 * (30 - i))
+        })
+    df = pd.DataFrame(records)
+
+    # 1. Test limit = 10 -> 10 vendors + 1 'Others'
+    res_10 = _compute_top_vendors_chart(df, measure="Spend", limit=10)
+    assert len(res_10["labels"]) == 11
+    assert res_10["labels"][0] == "Vendor_01"
+    assert res_10["labels"][-1] == "Others (15 vendors)"
+
+    # 2. Test limit = 20 -> 20 vendors + 1 'Others'
+    res_20 = _compute_top_vendors_chart(df, measure="Spend", limit=20)
+    assert len(res_20["labels"]) == 21
+    assert res_20["labels"][-1] == "Others (5 vendors)"
+
+    # 3. Test limit = 0 (All Vendors) -> exactly 25 vendors, no 'Others'
+    res_all = _compute_top_vendors_chart(df, measure="Spend", limit=0)
+    assert len(res_all["labels"]) == 25
+    assert not any("Others" in lbl for lbl in res_all["labels"])
+

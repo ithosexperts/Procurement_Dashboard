@@ -56,6 +56,9 @@
             itemAttributes: {} // attr_name -> array of selected values
         },
 
+        // Top Vendors editable limit (Req 14)
+        topVendorsLimit: 50,
+
         // Detail Table State (TB4, TB5)
         tableSort: {
             column: "Posting Date",
@@ -179,6 +182,18 @@
         btnRefreshData: document.getElementById("btnRefreshData"),
         btnResetFilters: document.getElementById("btnResetFilters"),
         btnResetGranularity: document.getElementById("btnResetGranularity"),
+        btnExportPdf: document.getElementById("btnExportPdf"),
+        btnToggleFilterSidebar: document.getElementById("btnToggleFilterSidebar"),
+        textToggleSidebar: document.getElementById("textToggleSidebar"),
+        iconToggleSidebar: document.getElementById("iconToggleSidebar"),
+        filterSidebarCol: document.getElementById("filterSidebarCol"),
+        mainDashboardView: document.getElementById("mainDashboardView"),
+        btnToggleAllSections: document.getElementById("btnToggleAllSections"),
+        textToggleAll: document.getElementById("textToggleAll"),
+        iconToggleAll: document.getElementById("iconToggleAll"),
+        selectTopVendorsLimit: document.getElementById("selectTopVendorsLimit"),
+        titleTopVendors: document.getElementById("titleTopVendors"),
+        subTitleTopVendors: document.getElementById("subTitleTopVendors"),
         dataAsOfText: document.getElementById("dataAsOfText"),
         noDataAlert: document.getElementById("noDataAlert"),
         activeFilterBadge: document.getElementById("activeFilterBadge"),
@@ -446,7 +461,7 @@
             });
 
             selectAllBtn.addEventListener("click", function () {
-                const visibleCheckboxes = Array.from(optionsContainer.querySelectorAll('.multiselect-option-item:not([style*="display: none"]) input[type="checkbox"]'));
+                const visibleCheckboxes = Array.from(optionsContainer.querySelectorAll('.multiselect-option-item:not([style*="display: none"]) input[type="checkbox"]:not(:disabled)'));
                 const selectedVals = new Set(getSelected(key, isAttr, attrName));
                 visibleCheckboxes.forEach(cb => {
                     cb.checked = true;
@@ -604,20 +619,29 @@
             optionsList.forEach(opt => {
                 const val = opt.value;
                 const count = opt.count || 0;
-                const isStale = !!opt.is_stale || count === 0;
                 const isSelected = selectedSet.has(val);
+                const isStale = !!opt.is_stale || count === 0;
+                // Zero-record options must be frozen/disabled and not selectable (Req 9)
+                const isDisabled = (count === 0 && !isSelected);
 
                 const item = document.createElement("label");
-                item.className = `multiselect-option-item ${isSelected ? "is-selected" : ""} ${isStale ? "is-stale" : ""}`;
+                item.className = `multiselect-option-item ${isSelected ? "is-selected" : ""} ${isStale ? "is-stale" : ""} ${isDisabled ? "is-disabled" : ""}`;
                 item.dataset.value = val;
+                if (isDisabled) {
+                    item.setAttribute("title", "No matching records for current filter selection");
+                }
 
                 const checkbox = document.createElement("input");
                 checkbox.type = "checkbox";
                 checkbox.className = "form-check-input";
                 checkbox.value = val;
                 checkbox.checked = isSelected;
+                if (isDisabled) {
+                    checkbox.disabled = true;
+                }
 
                 checkbox.addEventListener("change", function () {
+                    if (this.disabled) return;
                     const current = new Set(getSelected(key, inst.isAttr, inst.attrName));
                     if (this.checked) {
                         current.add(this.value);
@@ -655,6 +679,7 @@
                     optElem.value = val;
                     optElem.textContent = `${val} (${count})`;
                     optElem.selected = isSelected;
+                    if (isDisabled) optElem.disabled = true;
                     if (isStale) optElem.className = "stale-option";
                     inst.hiddenSelect.appendChild(optElem);
                 }
@@ -867,6 +892,86 @@
             });
         }
 
+        // Export PDF (Req 2)
+        if (DOM.btnExportPdf) {
+            DOM.btnExportPdf.addEventListener("click", function () {
+                const granElem = document.getElementById("printReportGranularity");
+                if (granElem) {
+                    granElem.textContent = `${AppState.granularity || 'All'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}`;
+                }
+                const dateElem = document.getElementById("printReportDate");
+                if (dateElem && DOM.dataAsOfText) {
+                    dateElem.textContent = DOM.dataAsOfText.textContent;
+                }
+                window.print();
+            });
+        }
+
+        // Collapse / Expand Filter Sidebar (Req 8)
+        if (DOM.btnToggleFilterSidebar) {
+            DOM.btnToggleFilterSidebar.addEventListener("click", function () {
+                if (!DOM.filterSidebarCol) return;
+                const isHidden = DOM.filterSidebarCol.classList.contains("d-none");
+                if (isHidden) {
+                    DOM.filterSidebarCol.classList.remove("d-none");
+                    if (DOM.mainDashboardView) {
+                        DOM.mainDashboardView.classList.remove("col-12");
+                        DOM.mainDashboardView.classList.add("col-xl-9", "col-lg-8");
+                    }
+                    if (DOM.textToggleSidebar) DOM.textToggleSidebar.textContent = "Hide Filters";
+                    if (DOM.iconToggleSidebar) DOM.iconToggleSidebar.className = "bi bi-layout-sidebar-inset";
+                } else {
+                    DOM.filterSidebarCol.classList.add("d-none");
+                    if (DOM.mainDashboardView) {
+                        DOM.mainDashboardView.classList.remove("col-xl-9", "col-lg-8");
+                        DOM.mainDashboardView.classList.add("col-12");
+                    }
+                    if (DOM.textToggleSidebar) DOM.textToggleSidebar.textContent = "Show Filters";
+                    if (DOM.iconToggleSidebar) DOM.iconToggleSidebar.className = "bi bi-layout-sidebar";
+                }
+                window.dispatchEvent(new Event("resize"));
+            });
+        }
+
+        // Collapse / Expand All Filter Sections (Req 8)
+        if (DOM.btnToggleAllSections) {
+            DOM.btnToggleAllSections.addEventListener("click", function () {
+                const accordionCollapses = document.querySelectorAll("#filterAccordion .accordion-collapse");
+                const anyClosed = Array.from(accordionCollapses).some(el => !el.classList.contains("show"));
+
+                accordionCollapses.forEach(el => {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+                    if (anyClosed) {
+                        bsCollapse.show();
+                    } else {
+                        bsCollapse.hide();
+                    }
+                });
+
+                if (DOM.textToggleAll) {
+                    DOM.textToggleAll.textContent = anyClosed ? "Collapse All" : "Expand All";
+                }
+                if (DOM.iconToggleAll) {
+                    DOM.iconToggleAll.className = anyClosed ? "bi bi-arrows-collapse" : "bi bi-arrows-expand";
+                }
+            });
+        }
+
+        // Editable Selection for Number of Top Vendors (Req 14)
+        if (DOM.selectTopVendorsLimit) {
+            DOM.selectTopVendorsLimit.addEventListener("change", function () {
+                const val = parseInt(this.value, 10);
+                AppState.topVendorsLimit = isNaN(val) ? 50 : val;
+                if (DOM.titleTopVendors) {
+                    DOM.titleTopVendors.textContent = val === 0 ? "9. All Vendors" : `9. Top ${val} Vendors`;
+                }
+                if (DOM.subTitleTopVendors) {
+                    DOM.subTitleTopVendors.textContent = val === 0 ? "Ranked by Spend" : "Ranked by Spend + Others";
+                }
+                executeQuery();
+            });
+        }
+
         // Date pickers (FT8)
         if (DOM.filterFromDate) {
             DOM.filterFromDate.addEventListener("change", function () {
@@ -977,7 +1082,8 @@
             page: AppState.tablePage,
             page_size: AppState.tablePageSize,
             sort_column: AppState.tableSort.column,
-            sort_direction: AppState.tableSort.direction
+            sort_direction: AppState.tableSort.direction,
+            top_vendors_limit: AppState.topVendorsLimit
         };
 
         try {
@@ -1095,6 +1201,86 @@
     }
 
     /**
+     * Chart.js Custom Plugin: Render Value Labels on Bar Graphs (CH1–CH10).
+     * Displays compact currency (Spend) or formatted number (Quantity) directly on bars.
+     */
+    const barValueLabelsPlugin = {
+        id: "barValueLabels",
+        afterDatasetsDraw(chart) {
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return;
+            const isHorizontal = chart.config.options.indexAxis === "y";
+            const isSpend = AppState.measure === "Spend";
+
+            chart.data.datasets.forEach((dataset, datasetIdx) => {
+                const meta = chart.getDatasetMeta(datasetIdx);
+                if (meta.hidden) return;
+
+                meta.data.forEach((element, idx) => {
+                    const raw = dataset.data[idx];
+                    if (raw === null || raw === undefined || raw === 0 || isNaN(raw)) return;
+
+                    let label = "";
+                    if (isSpend) {
+                        label = IndianCurrencyFormatter.formatCompact(raw, 1);
+                    } else {
+                        label = Number(raw).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+                    }
+
+                    ctx.save();
+                    ctx.font = "600 10.5px 'Plus Jakarta Sans', sans-serif";
+
+                    if (isHorizontal) {
+                        const textWidth = ctx.measureText(label).width;
+                        const yPos = element.y + 3.5;
+
+                        if (raw >= 0) {
+                            const xPos = element.x + 5;
+                            if (xPos + textWidth > chartArea.right - 2) {
+                                ctx.fillStyle = "#ffffff";
+                                ctx.textAlign = "right";
+                                ctx.fillText(label, element.x - 5, yPos);
+                            } else {
+                                ctx.fillStyle = "#334155";
+                                ctx.textAlign = "left";
+                                ctx.fillText(label, xPos, yPos);
+                            }
+                        } else {
+                            const xPos = element.x - 5;
+                            ctx.fillStyle = "#dc2626";
+                            ctx.textAlign = "right";
+                            ctx.fillText(label, xPos, yPos);
+                        }
+                    } else {
+                        const xPos = element.x;
+                        if (raw >= 0) {
+                            const yPos = element.y - 4;
+                            ctx.textAlign = "center";
+                            if (yPos < chartArea.top + 8) {
+                                ctx.fillStyle = "#ffffff";
+                                ctx.fillText(label, xPos, element.y + 13);
+                            } else {
+                                ctx.fillStyle = "#1e293b";
+                                ctx.fillText(label, xPos, yPos);
+                            }
+                        } else {
+                            const yPos = element.y + 12;
+                            ctx.textAlign = "center";
+                            ctx.fillStyle = "#dc2626";
+                            ctx.fillText(label, xPos, yPos);
+                        }
+                    }
+                    ctx.restore();
+                });
+            });
+        }
+    };
+
+    if (typeof Chart !== "undefined" && Chart.register) {
+        Chart.register(barValueLabelsPlugin);
+    }
+
+    /**
      * Render Main Vertical Bar Chart (CH1, CH2).
      */
     function renderMainChart(chartData) {
@@ -1118,6 +1304,7 @@
                     },
                     y: {
                         beginAtZero: true,
+                        grace: "5%",
                         ticks: {
                             callback: function (val) {
                                 if (AppState.measure === "Spend") {
@@ -1201,6 +1388,7 @@
                     scales: {
                         x: {
                             beginAtZero: true,
+                            grace: "8%",
                             ticks: {
                                 callback: function (val) {
                                     if (AppState.measure === "Spend") {

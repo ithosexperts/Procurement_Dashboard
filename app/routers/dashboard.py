@@ -166,6 +166,7 @@ async def procurement_query_api(
     sort_column = payload.get("sort_column", "Posting Date")
     sort_direction = payload.get("sort_direction", "desc")
     intent = payload.get("intent", "all")
+    top_vendors_limit = int(payload.get("top_vendors_limit", 50))
 
     result = await query_procurement_data(
         granularity=granularity,
@@ -177,6 +178,7 @@ async def procurement_query_api(
         sort_column=sort_column,
         sort_direction=sort_direction,
         intent=intent,
+        top_vendors_limit=top_vendors_limit,
     )
 
     return JSONResponse(result)

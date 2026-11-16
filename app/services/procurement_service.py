@@ -708,7 +708,11 @@ def _compute_main_chart(
         return {"labels": labels, "datasets": datasets}
 
 
-def _compute_breakdown_charts(df: pd.DataFrame, measure: str) -> dict[str, Any]:
+def _compute_breakdown_charts(
+    df: pd.DataFrame,
+    measure: str,
+    top_vendors_limit: int = 50,
+) -> dict[str, Any]:
     """Compute all 10 horizontal breakdown charts according to Rules CH3–CH10."""
     result = {}
 
@@ -742,8 +746,8 @@ def _compute_breakdown_charts(df: pd.DataFrame, measure: str) -> dict[str, Any]:
     # 8. Credit vs Advance [Purchase Type]
     result["purchase_type"] = _format_horizontal_chart(df, PURCHASE_TYPE_COL, measure)
 
-    # 9. Top 50 Vendors + Others (ranked by Spend always, CH8)
-    result["top_vendors"] = _compute_top_50_vendors_chart(df, measure)
+    # 9. Top Vendors + Others (ranked by Spend always, CH8)
+    result["top_vendors"] = _compute_top_vendors_chart(df, measure, limit=top_vendors_limit)
 
     # 10. Vendor Group [Group]
     result["vendor_group"] = _format_horizontal_chart(df, VENDOR_GROUP_COL, measure)
@@ -808,7 +812,16 @@ def _format_horizontal_chart(
 
 
 def _compute_top_50_vendors_chart(df: pd.DataFrame, measure: str) -> dict[str, Any]:
-    """Compute Top 50 Vendors ranked by Spend, with Others (CH8)."""
+    """Backward compatibility wrapper: compute Top 50 Vendors (CH8)."""
+    return _compute_top_vendors_chart(df, measure, limit=50)
+
+
+def _compute_top_vendors_chart(
+    df: pd.DataFrame,
+    measure: str,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Compute Top N Vendors ranked by Spend, with Others (CH8)."""
     if VENDOR_COL not in df.columns or df.empty:
         return {"labels": [], "datasets": []}
 
@@ -816,12 +829,16 @@ def _compute_top_50_vendors_chart(df: pd.DataFrame, measure: str) -> dict[str, A
     vendor_spend = df.groupby(VENDOR_COL, observed=False)[SPEND_COL].sum().sort_values(ascending=False)
     all_vendors = vendor_spend.index.tolist()
 
-    top_50_vendors = all_vendors[:50]
-    others_vendors = all_vendors[50:]
+    if limit and limit > 0:
+        top_vendors = all_vendors[:limit]
+        others_vendors = all_vendors[limit:]
+    else:
+        top_vendors = all_vendors
+        others_vendors = []
 
     if measure == "Spend":
-        labels = [str(v) for v in top_50_vendors]
-        data = [round(float(vendor_spend[v]), 2) for v in top_50_vendors]
+        labels = [str(v) for v in top_vendors]
+        data = [round(float(vendor_spend[v]), 2) for v in top_vendors]
 
         if others_vendors:
             others_spend = round(float(vendor_spend[others_vendors].sum()), 2)
@@ -843,7 +860,7 @@ def _compute_top_50_vendors_chart(df: pd.DataFrame, measure: str) -> dict[str, A
     else:
         # Quantity Mode: still ranked by Spend (CH8)
         uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
-        labels = [str(v) for v in top_50_vendors]
+        labels = [str(v) for v in top_vendors]
         if others_vendors:
             labels.append(f"Others ({len(others_vendors)} vendors)")
 
@@ -857,7 +874,7 @@ def _compute_top_50_vendors_chart(df: pd.DataFrame, measure: str) -> dict[str, A
 
         datasets = []
         for idx, uom in enumerate(uoms):
-            data = [round(float(vendor_uom_map.get((v, uom), 0.0)), 2) for v in top_50_vendors]
+            data = [round(float(vendor_uom_map.get((v, uom), 0.0)), 2) for v in top_vendors]
             if others_vendors:
                 others_qty = sum(float(vendor_uom_map.get((v, uom), 0.0)) for v in others_vendors)
                 data.append(round(others_qty, 2))
@@ -1087,6 +1104,7 @@ def _sync_query_procurement_data(
     sort_column: str,
     sort_direction: str,
     intent: str = "all",
+    top_vendors_limit: int = 50,
 ) -> dict[str, Any]:
     """Synchronous core query engine executed inside worker threadpool."""
     t_start = time.perf_counter()
@@ -1152,11 +1170,11 @@ def _sync_query_procurement_data(
         t_main = time.perf_counter() - t0
 
         t0 = time.perf_counter()
-        bd_key = (id(df), date_basis, f_hash, measure)
+        bd_key = (id(df), date_basis, f_hash, measure, top_vendors_limit)
         if bd_key in _breakdown_cache:
             breakdown_charts = _breakdown_cache[bd_key]
         else:
-            breakdown_charts = _compute_breakdown_charts(filtered_df, measure)
+            breakdown_charts = _compute_breakdown_charts(filtered_df, measure, top_vendors_limit=top_vendors_limit)
             _breakdown_cache[bd_key] = breakdown_charts
         t_bd = time.perf_counter() - t0
         t_total = time.perf_counter() - t_start
@@ -1201,13 +1219,13 @@ def _sync_query_procurement_data(
     main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis)
     t_main = time.perf_counter() - t0
 
-    # 4. Breakdown charts (cached by dataframe id, date_basis, filter_hash, measure)
+    # 4. Breakdown charts (cached by dataframe id, date_basis, filter_hash, measure, top_vendors_limit)
     t0 = time.perf_counter()
-    bd_key = (id(df), date_basis, f_hash, measure)
+    bd_key = (id(df), date_basis, f_hash, measure, top_vendors_limit)
     if bd_key in _breakdown_cache:
         breakdown_charts = _breakdown_cache[bd_key]
     else:
-        breakdown_charts = _compute_breakdown_charts(filtered_df, measure)
+        breakdown_charts = _compute_breakdown_charts(filtered_df, measure, top_vendors_limit=top_vendors_limit)
         _breakdown_cache[bd_key] = breakdown_charts
     t_bd = time.perf_counter() - t0
 
@@ -1246,6 +1264,7 @@ async def query_procurement_data(
     sort_column: str = "Posting Date",
     sort_direction: str = "desc",
     intent: str = "all",
+    top_vendors_limit: int = 50,
 ) -> dict[str, Any]:
     """
     Optimized in-memory query engine:
@@ -1280,4 +1299,5 @@ async def query_procurement_data(
         sort_column=sort_column,
         sort_direction=sort_direction,
         intent=intent,
+        top_vendors_limit=top_vendors_limit,
     )

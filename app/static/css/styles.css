@@ -15,7 +15,9 @@
 body {
     background-color: var(--bg-page);
     color: var(--text-main);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
 }
 
@@ -48,13 +50,13 @@ body {
     }
 }
 
-/* Top Action Bar & Granularity Selection Controls */
+/* Top Action Bar & Granularity Selection Controls (Pastel Background) */
 .selection-card,
 .stage-card {
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 0.625rem;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    background: linear-gradient(135deg, #eef2ff 0%, #f0fdf4 100%) !important;
+    border: 1px solid #c7d2fe !important;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(30, 64, 175, 0.06);
 }
 
 .granularity-header {
@@ -565,6 +567,27 @@ body {
     color: #cbd5e1;
 }
 
+/* Frozen / Disabled Options with Zero Records (Req 9) */
+.multiselect-option-item.is-disabled {
+    pointer-events: none !important;
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+    background-color: #f8fafc !important;
+}
+
+.multiselect-option-item.is-disabled input[type="checkbox"] {
+    cursor: not-allowed !important;
+    opacity: 0.5 !important;
+}
+
+.multiselect-option-item.is-disabled .option-label {
+    color: #94a3b8 !important;
+}
+
+.multiselect-option-item.is-disabled .option-count {
+    color: #cbd5e1 !important;
+}
+
 .no-options-msg {
     padding: 1rem 0.5rem;
     text-align: center;
@@ -669,4 +692,118 @@ body {
     align-items: center;
     justify-content: center;
     flex-direction: column;
+}
+
+/* Sidebar Toggle Animation */
+#filterSidebarCol {
+    transition: all 0.25s ease-in-out;
+}
+
+#mainDashboardView {
+    transition: all 0.25s ease-in-out;
+}
+
+/* ── Print / Export PDF Styles (Req 2) ────────────────────────────────── */
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 8mm 10mm;
+    }
+
+    body {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* 1. Do NOT include transactional data */
+    .detail-table-card,
+    #detailTable,
+    #tablePagination,
+    .table-responsive {
+        display: none !important;
+    }
+
+    /* 2. Do NOT include filter selections */
+    #filterSidebarCol,
+    .filter-panel,
+    .active-filters-panel,
+    #filterAccordion,
+    .selection-card,
+    .stage-card,
+    #selectionPromptCard {
+        display: none !important;
+    }
+
+    /* Hide non-report chrome */
+    nav.navbar,
+    footer,
+    #btnRefreshData,
+    #btnExportPdf,
+    #btnToggleFilterSidebar,
+    #btnResetGranularity,
+    #loadingOverlay,
+    #noDataAlert,
+    .btn,
+    button,
+    select,
+    .btn-group {
+        display: none !important;
+    }
+
+    /* Print Report Header */
+    .print-only-header {
+        display: block !important;
+        margin-bottom: 1rem !important;
+        padding-bottom: 0.5rem !important;
+        border-bottom: 2px solid #0284c7 !important;
+    }
+
+    /* Expand charts to 100% full width */
+    #dashboardMainContent,
+    #mainDashboardView,
+    .row {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        flex: 0 0 100% !important;
+    }
+
+    /* KPI Cards */
+    .kpi-card {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+
+    /* Chart Cards: Display only the bar graphs with their values */
+    .chart-card {
+        box-shadow: none !important;
+        border: 1px solid #e2e8f0 !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin-bottom: 1rem !important;
+        background: #ffffff !important;
+    }
+
+    .chart-card-header {
+        background: #f8fafc !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    .chart-container-horizontal,
+    .chart-container-vertical {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+        padding: 0.5rem !important;
+    }
+
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
 }
