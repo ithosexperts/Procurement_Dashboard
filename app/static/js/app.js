@@ -1955,8 +1955,8 @@
 
         if (chartData && chartData.datasets) {
             chartData.datasets.forEach(ds => {
-                ds.hoverBackgroundColor = "#2563eb";
-                ds.hoverBorderColor = "#1d4ed8";
+                ds.hoverBackgroundColor = "#165BAA";
+                ds.hoverBorderColor = "#0F3B6C";
             });
         }
 
@@ -1972,11 +1972,20 @@
                 },
                 scales: {
                     x: {
-                        grid: { display: false }
+                        grid: { display: false },
+                        ticks: {
+                            color: "#64748B",
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "500" }
+                        }
                     },
                     y: {
                         beginAtZero: true,
+                        grid: {
+                            color: "#F1F5F9"
+                        },
                         ticks: {
+                            color: "#64748B",
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
                             callback: function (val) {
                                 if (AppState.measure === "Spend") {
                                     return IndianCurrencyFormatter.formatCompact(val);
@@ -1991,6 +2000,11 @@
                         display: AppState.measure === "Quantity"
                     },
                     tooltip: {
+                        backgroundColor: "#0A2540",
+                        titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "bold" },
+                        bodyFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+                        cornerRadius: 6,
+                        padding: 10,
                         callbacks: {
                             label: function (context) {
                                 const rawVal = context.raw;
@@ -2059,7 +2073,12 @@
                     scales: {
                         x: {
                             beginAtZero: true,
+                            grid: {
+                                color: "#F1F5F9"
+                            },
                             ticks: {
+                                color: "#64748B",
+                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
                                 callback: function (val) {
                                     if (AppState.measure === "Spend") {
                                         return IndianCurrencyFormatter.formatCompact(val);
@@ -2069,7 +2088,11 @@
                             }
                         },
                         y: {
-                            grid: { display: false }
+                            grid: { display: false },
+                            ticks: {
+                                color: "#1E293B",
+                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "500" }
+                            }
                         }
                     },
                     plugins: {
@@ -2077,6 +2100,11 @@
                             display: AppState.measure === "Quantity"
                         },
                         tooltip: {
+                            backgroundColor: "#0A2540",
+                            titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "bold" },
+                            bodyFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+                            cornerRadius: 6,
+                            padding: 10,
                             callbacks: {
                                 label: function (context) {
                                     const rawVal = context.raw;

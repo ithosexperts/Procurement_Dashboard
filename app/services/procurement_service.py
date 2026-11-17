@@ -786,8 +786,8 @@ def _compute_main_chart(
                     "datasets": [{
                         "label": "Spend (INR)",
                         "data": data,
-                        "backgroundColor": "#1e3a8a",
-                        "borderColor": "#172554",
+                        "backgroundColor": "#0F3B6C",
+                        "borderColor": "#09264A",
                         "borderWidth": 1,
                     }],
                     "meta": meta,
@@ -847,8 +847,8 @@ def _compute_main_chart(
                     "datasets": [{
                         "label": "Spend (INR)",
                         "data": data,
-                        "backgroundColor": "#1e3a8a",
-                        "borderColor": "#172554",
+                        "backgroundColor": "#0F3B6C",
+                        "borderColor": "#09264A",
                         "borderWidth": 1,
                     }],
                     "meta": meta,
@@ -903,8 +903,8 @@ def _compute_main_chart(
                         "datasets": [{
                             "label": "Spend (INR)",
                             "data": data,
-                            "backgroundColor": "#1e3a8a",
-                            "borderColor": "#172554",
+                            "backgroundColor": "#0F3B6C",
+                            "borderColor": "#09264A",
                             "borderWidth": 1,
                         }],
                         "meta": meta,
@@ -948,8 +948,8 @@ def _compute_main_chart(
                 {
                     "label": "Spend (INR)",
                     "data": [round(float(v), 2) for v in grouped[SPEND_COL].tolist()],
-                    "backgroundColor": "#1e3a8a",
-                    "borderColor": "#172554",
+                    "backgroundColor": "#0F3B6C",
+                    "borderColor": "#09264A",
                     "borderWidth": 1,
                 }
             ],
@@ -1127,8 +1127,8 @@ def _compute_top_vendors_chart(
                 {
                     "label": "Spend (INR)",
                     "data": data,
-                    "backgroundColor": "#1e3a8a",
-                    "borderColor": "#172554",
+                    "backgroundColor": "#0F3B6C",
+                    "borderColor": "#09264A",
                     "borderWidth": 1,
                 }
             ],
