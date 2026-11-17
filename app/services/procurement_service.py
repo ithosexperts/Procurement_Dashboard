@@ -786,8 +786,8 @@ def _compute_main_chart(
                     "datasets": [{
                         "label": "Spend (INR)",
                         "data": data,
-                        "backgroundColor": "#1769D2",
-                        "borderColor": "#123B78",
+                        "backgroundColor": "#1e3a8a",
+                        "borderColor": "#172554",
                         "borderWidth": 1,
                     }],
                     "meta": meta,
@@ -795,8 +795,8 @@ def _compute_main_chart(
             else:
                 uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
                 color_palette = [
-                    "#1769D2", "#2688E8", "#123B78", "#16A36A",
-                    "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
+                    "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+                    "#dc2626", "#059669", "#4f46e5", "#ea580c",
                 ]
                 m_qty_map = df.groupby([month_col, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
                 datasets = []
@@ -847,8 +847,8 @@ def _compute_main_chart(
                     "datasets": [{
                         "label": "Spend (INR)",
                         "data": data,
-                        "backgroundColor": "#1769D2",
-                        "borderColor": "#123B78",
+                        "backgroundColor": "#1e3a8a",
+                        "borderColor": "#172554",
                         "borderWidth": 1,
                     }],
                     "meta": meta,
@@ -856,8 +856,8 @@ def _compute_main_chart(
             else:
                 uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
                 color_palette = [
-                    "#1769D2", "#2688E8", "#123B78", "#16A36A",
-                    "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
+                    "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+                    "#dc2626", "#059669", "#4f46e5", "#ea580c",
                 ]
                 datasets = []
                 for idx, uom in enumerate(uoms):
@@ -903,8 +903,8 @@ def _compute_main_chart(
                         "datasets": [{
                             "label": "Spend (INR)",
                             "data": data,
-                            "backgroundColor": "#1769D2",
-                            "borderColor": "#123B78",
+                            "backgroundColor": "#1e3a8a",
+                            "borderColor": "#172554",
                             "borderWidth": 1,
                         }],
                         "meta": meta,
@@ -912,8 +912,8 @@ def _compute_main_chart(
                 else:
                     uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
                     color_palette = [
-                        "#1769D2", "#2688E8", "#123B78", "#16A36A",
-                        "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
+                        "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+                        "#dc2626", "#059669", "#4f46e5", "#ea580c",
                     ]
                     date_qty_map = df.groupby([date_col_iso, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
                     datasets = []
@@ -948,8 +948,8 @@ def _compute_main_chart(
                 {
                     "label": "Spend (INR)",
                     "data": [round(float(v), 2) for v in grouped[SPEND_COL].tolist()],
-                    "backgroundColor": "#1769D2",
-                    "borderColor": "#123B78",
+                    "backgroundColor": "#1e3a8a",
+                    "borderColor": "#172554",
                     "borderWidth": 1,
                 }
             ],
@@ -962,8 +962,8 @@ def _compute_main_chart(
         meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else ""} for lbl in labels]
 
         color_palette = [
-            "#1769D2", "#2688E8", "#123B78", "#16A36A",
-            "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
+            "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+            "#dc2626", "#059669", "#4f46e5", "#ea580c",
         ]
 
         qty_map = df.groupby([label_col, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
@@ -1051,8 +1051,8 @@ def _format_horizontal_chart(
                 {
                     "label": "Spend (INR)",
                     "data": values,
-                    "backgroundColor": "#1769D2",
-                    "borderColor": "#123B78",
+                    "backgroundColor": "#0f766e",
+                    "borderColor": "#115e59",
                     "borderWidth": 1,
                 }
             ],
@@ -1064,8 +1064,8 @@ def _format_horizontal_chart(
         uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
 
         color_palette = [
-            "#1769D2", "#2688E8", "#123B78", "#16A36A",
-            "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
+            "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+            "#dc2626", "#059669", "#4f46e5", "#ea580c",
         ]
 
         # Fast single groupby across (cat_col, UOM_COL)
@@ -1127,8 +1127,8 @@ def _compute_top_vendors_chart(
                 {
                     "label": "Spend (INR)",
                     "data": data,
-                    "backgroundColor": "#1769D2",
-                    "borderColor": "#123B78",
+                    "backgroundColor": "#1e3a8a",
+                    "borderColor": "#172554",
                     "borderWidth": 1,
                 }
             ],
@@ -1141,8 +1141,8 @@ def _compute_top_vendors_chart(
             labels.append(f"Others ({len(others_vendors)} vendors)")
 
         color_palette = [
-            "#1769D2", "#2688E8", "#123B78", "#16A36A",
-            "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
+            "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+            "#dc2626", "#059669", "#4f46e5", "#ea580c",
         ]
 
         # Fast single groupby across (VENDOR_COL, UOM_COL)
