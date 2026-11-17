@@ -13,7 +13,8 @@ Implements Milestones 3, 4, 5, and 6:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+import calendar
+from datetime import datetime, timezone, date, timedelta
 import gc
 import logging
 import time
@@ -115,6 +116,58 @@ MONTH_ABBRS = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ]
+
+MONTH_NAME_TO_NUM = {
+    "jan": 1, "january": 1, "1": 1, "01": 1,
+    "feb": 2, "february": 2, "2": 2, "02": 2,
+    "mar": 3, "march": 3, "3": 3, "03": 3,
+    "apr": 4, "april": 4, "4": 4, "04": 4,
+    "may": 5, "5": 5, "05": 5,
+    "jun": 6, "june": 6, "6": 6, "06": 6,
+    "jul": 7, "july": 7, "7": 7, "07": 7,
+    "aug": 8, "august": 8, "8": 8, "08": 8,
+    "sep": 9, "september": 9, "9": 9, "09": 9,
+    "oct": 10, "october": 10, "10": 10,
+    "nov": 11, "november": 11, "11": 11,
+    "dec": 12, "december": 12, "12": 12,
+}
+
+
+def get_month_weeks(year: int, month: int) -> list[dict[str, Any]]:
+    """
+    Return Monday-Sunday calendar weeks restricted to the selected month (Section 2 Level 3).
+    Each week has start_date, end_date, and readable label e.g. 'Week 1 (01–03 Mar)'.
+    """
+    _, num_days = calendar.monthrange(year, month)
+    weeks = []
+    d = 1
+    w_idx = 1
+    month_abbr = MONTH_ABBRS[month - 1]
+    while d <= num_days:
+        start_d = d
+        dt = date(year, month, d)
+        days_until_sunday = 6 - dt.weekday()
+        end_d = min(num_days, d + days_until_sunday)
+        start_str = f"{year:04d}-{month:02d}-{start_d:02d}"
+        end_str = f"{year:04d}-{month:02d}-{end_d:02d}"
+        if start_d == end_d:
+            lbl = f"Week {w_idx} ({start_d:02d} {month_abbr})"
+        else:
+            lbl = f"Week {w_idx} ({start_d:02d}–{end_d:02d} {month_abbr})"
+        weeks.append({
+            "week_num": w_idx,
+            "label": lbl,
+            "start_date": start_str,
+            "end_date": end_str,
+            "start_day": start_d,
+            "end_day": end_d,
+            "year": year,
+            "month": month,
+            "month_name": calendar.month_name[month],
+        })
+        d = end_d + 1
+        w_idx += 1
+    return weeks
 
 
 class ProcurementDataStore:
@@ -538,7 +591,16 @@ def _get_active_filters_mask(
 
     # Month
     if exclude_key != "month" and filters.get("month"):
-        selected_months = [int(m) for m in filters["month"] if str(m).isdigit()]
+        month_vals = filters["month"]
+        if not isinstance(month_vals, list):
+            month_vals = [month_vals]
+        selected_months = []
+        for m in month_vals:
+            m_str = str(m).strip().lower()
+            if m_str.isdigit():
+                selected_months.append(int(m_str))
+            elif m_str in MONTH_NAME_TO_NUM:
+                selected_months.append(MONTH_NAME_TO_NUM[m_str])
         if selected_months and month_col in df.columns:
             c = df[month_col].isin(selected_months)
             mask = c if mask is None else (mask & c)
@@ -653,21 +715,227 @@ def _compute_main_chart(
     granularity: str,
     measure: str,
     date_basis: str,
+    filters: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Generate main vertical bar chart grouping according to Rules FL5, FL6, CH1, CH2."""
+    """
+    Generate main vertical bar chart grouping according to Rules FL5, FL6, CH1, CH2,
+    with cascading drill-down support: Year -> Month -> Week -> Date.
+    """
     if df.empty:
-        return {"labels": [], "datasets": []}
+        return {"labels": [], "datasets": [], "meta": []}
 
+    is_posting = (date_basis == "Posting Date")
+    year_col = "Posting Year" if is_posting else "Vendor Doc Year"
+    month_col = "Posting Month" if is_posting else "Vendor Doc Month"
+    date_col_iso = f"{POSTING_DATE_COL}_ISO" if is_posting else f"{VENDOR_DOC_DATE_COL}_ISO"
+
+    filters = filters or {}
+    year_filters = filters.get("year") or []
+    if not isinstance(year_filters, list):
+        year_filters = [year_filters]
+    valid_year_filters = [int(y) for y in year_filters if str(y).isdigit()]
+
+    month_filters = filters.get("month") or []
+    if not isinstance(month_filters, list):
+        month_filters = [month_filters]
+    valid_month_filters = []
+    for m in month_filters:
+        m_str = str(m).strip().lower()
+        if m_str.isdigit():
+            valid_month_filters.append(int(m_str))
+        elif m_str in MONTH_NAME_TO_NUM:
+            valid_month_filters.append(MONTH_NAME_TO_NUM[m_str])
+
+    from_date = filters.get("fromDate")
+    to_date = filters.get("toDate")
+
+    # 1. Drill-down LEVEL 2: Monthly View (when single year is selected/drilled)
+    if granularity == "Monthly":
+        single_year = None
+        if len(valid_year_filters) == 1:
+            single_year = valid_year_filters[0]
+        elif year_col in df.columns and df[year_col].nunique() == 1:
+            single_year = int(df[year_col].iloc[0])
+
+        if single_year is not None:
+            # Display all 12 months for this year (Rule from Section 2 & 8)
+            labels = [f"{MONTH_ABBRS[m-1]}-{single_year}" for m in range(1, 13)]
+            meta = [
+                {
+                    "month": m,
+                    "month_name": calendar.month_name[m],
+                    "year": single_year,
+                    "label": f"{MONTH_ABBRS[m-1]}-{single_year}",
+                }
+                for m in range(1, 13)
+            ]
+
+            if measure == "Spend":
+                m_spend_map = df.groupby(month_col, observed=False)[SPEND_COL].sum().to_dict()
+                data = [round(float(m_spend_map.get(m, 0.0)), 2) for m in range(1, 13)]
+                return {
+                    "labels": labels,
+                    "datasets": [{
+                        "label": "Spend (INR)",
+                        "data": data,
+                        "backgroundColor": "#1e3a8a",
+                        "borderColor": "#172554",
+                        "borderWidth": 1,
+                    }],
+                    "meta": meta,
+                }
+            else:
+                uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
+                color_palette = [
+                    "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+                    "#dc2626", "#059669", "#4f46e5", "#ea580c",
+                ]
+                m_qty_map = df.groupby([month_col, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
+                datasets = []
+                for idx, uom in enumerate(uoms):
+                    d = [round(float(m_qty_map.get((m, uom), 0.0)), 2) for m in range(1, 13)]
+                    color = color_palette[idx % len(color_palette)]
+                    datasets.append({
+                        "label": f"Qty ({uom})",
+                        "data": d,
+                        "backgroundColor": color,
+                        "borderColor": color,
+                        "borderWidth": 1,
+                    })
+                return {"labels": labels, "datasets": datasets, "meta": meta}
+
+    # 2. Drill-down LEVEL 3: Weekly View (when single month and year are selected/drilled)
+    elif granularity == "Weekly":
+        single_year = None
+        if len(valid_year_filters) == 1:
+            single_year = valid_year_filters[0]
+        elif year_col in df.columns and df[year_col].nunique() == 1:
+            single_year = int(df[year_col].iloc[0])
+
+        single_month = None
+        if len(valid_month_filters) == 1:
+            single_month = valid_month_filters[0]
+        elif month_col in df.columns and df[month_col].nunique() == 1:
+            single_month = int(df[month_col].iloc[0])
+
+        if single_year is not None and single_month is not None:
+            weeks = get_month_weeks(single_year, single_month)
+            labels = [w["label"] for w in weeks]
+            meta = weeks
+
+            if measure == "Spend":
+                data = []
+                for w in weeks:
+                    if date_col_iso in df.columns:
+                        c = (df[date_col_iso] >= w["start_date"]) & (df[date_col_iso] <= w["end_date"])
+                        sub = df[c]
+                        w_spend = float(sub[SPEND_COL].sum()) if not sub.empty else 0.0
+                    else:
+                        w_spend = 0.0
+                    data.append(round(w_spend, 2))
+
+                return {
+                    "labels": labels,
+                    "datasets": [{
+                        "label": "Spend (INR)",
+                        "data": data,
+                        "backgroundColor": "#1e3a8a",
+                        "borderColor": "#172554",
+                        "borderWidth": 1,
+                    }],
+                    "meta": meta,
+                }
+            else:
+                uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
+                color_palette = [
+                    "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+                    "#dc2626", "#059669", "#4f46e5", "#ea580c",
+                ]
+                datasets = []
+                for idx, uom in enumerate(uoms):
+                    d = []
+                    for w in weeks:
+                        if date_col_iso in df.columns:
+                            c = (df[date_col_iso] >= w["start_date"]) & (df[date_col_iso] <= w["end_date"]) & (df[UOM_COL] == uom)
+                            sub = df[c]
+                            w_qty = float(sub[QTY_COL].sum()) if not sub.empty else 0.0
+                        else:
+                            w_qty = 0.0
+                        d.append(round(w_qty, 2))
+                    color = color_palette[idx % len(color_palette)]
+                    datasets.append({
+                        "label": f"Qty ({uom})",
+                        "data": d,
+                        "backgroundColor": color,
+                        "borderColor": color,
+                        "borderWidth": 1,
+                    })
+                return {"labels": labels, "datasets": datasets, "meta": meta}
+
+    # 3. Drill-down LEVEL 4: Daily View (when calendar range or specific week is selected)
+    elif granularity == "Daily" and from_date and to_date:
+        try:
+            start_d = datetime.strptime(str(from_date), "%Y-%m-%d").date()
+            end_d = datetime.strptime(str(to_date), "%Y-%m-%d").date()
+            if start_d <= end_d and (end_d - start_d).days <= 62:
+                days = []
+                cur = start_d
+                while cur <= end_d:
+                    days.append(cur)
+                    cur += timedelta(days=1)
+
+                labels = [d.strftime("%d %b %Y") for d in days]
+                meta = [{"date": d.strftime("%Y-%m-%d"), "label": d.strftime("%d %b %Y")} for d in days]
+
+                if measure == "Spend":
+                    date_spend_map = df.groupby(date_col_iso, observed=False)[SPEND_COL].sum().to_dict()
+                    data = [round(float(date_spend_map.get(d.strftime("%Y-%m-%d"), 0.0)), 2) for d in days]
+                    return {
+                        "labels": labels,
+                        "datasets": [{
+                            "label": "Spend (INR)",
+                            "data": data,
+                            "backgroundColor": "#1e3a8a",
+                            "borderColor": "#172554",
+                            "borderWidth": 1,
+                        }],
+                        "meta": meta,
+                    }
+                else:
+                    uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
+                    color_palette = [
+                        "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+                        "#dc2626", "#059669", "#4f46e5", "#ea580c",
+                    ]
+                    date_qty_map = df.groupby([date_col_iso, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
+                    datasets = []
+                    for idx, uom in enumerate(uoms):
+                        d = [round(float(date_qty_map.get((day.strftime("%Y-%m-%d"), uom), 0.0)), 2) for day in days]
+                        color = color_palette[idx % len(color_palette)]
+                        datasets.append({
+                            "label": f"Qty ({uom})",
+                            "data": d,
+                            "backgroundColor": color,
+                            "borderColor": color,
+                            "borderWidth": 1,
+                        })
+                    return {"labels": labels, "datasets": datasets, "meta": meta}
+        except Exception as exc:
+            logger.warning("Error computing daily chart with custom range: %s", exc)
+
+    # 4. Standard / Fallback Grouping (Level 1 Yearly, or non-drilldown Monthly/Weekly/Daily)
     label_col, sort_col = _get_period_cols(df, granularity, date_basis)
     if label_col not in df.columns or sort_col not in df.columns:
-        return {"labels": [], "datasets": []}
+        return {"labels": [], "datasets": [], "meta": []}
 
     if measure == "Spend":
         grouped = df.groupby([sort_col, label_col], observed=False)[SPEND_COL].sum().reset_index()
         grouped = grouped.sort_values(by=sort_col)
+        labels = [str(lbl) for lbl in grouped[label_col].tolist()]
+        meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else ""} for lbl in labels]
 
         return {
-            "labels": grouped[label_col].tolist(),
+            "labels": labels,
             "datasets": [
                 {
                     "label": "Spend (INR)",
@@ -677,19 +945,19 @@ def _compute_main_chart(
                     "borderWidth": 1,
                 }
             ],
+            "meta": meta,
         }
     else:
-        # Quantity Mode: side-by-side bar per UoM (CH2)
         uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
         periods_df = df[[sort_col, label_col]].drop_duplicates().sort_values(sort_col)
-        labels = periods_df[label_col].tolist()
+        labels = [str(lbl) for lbl in periods_df[label_col].tolist()]
+        meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else ""} for lbl in labels]
 
         color_palette = [
             "#0f766e", "#2563eb", "#d97706", "#7c3aed",
             "#dc2626", "#059669", "#4f46e5", "#ea580c",
         ]
 
-        # Fast single groupby across (period, UoM)
         qty_map = df.groupby([label_col, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
 
         datasets = []
@@ -705,7 +973,7 @@ def _compute_main_chart(
                 "borderWidth": 1,
             })
 
-        return {"labels": labels, "datasets": datasets}
+        return {"labels": labels, "datasets": datasets, "meta": meta}
 
 
 def _compute_breakdown_charts(
@@ -1133,7 +1401,7 @@ def _sync_query_procurement_data(
     # Fast path: Intent == "granularity"
     if intent == "granularity":
         t0 = time.perf_counter()
-        main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis)
+        main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis, filters=filters)
         t_main = time.perf_counter() - t0
         t_total = time.perf_counter() - t_start
 
@@ -1166,7 +1434,7 @@ def _sync_query_procurement_data(
     # Fast path: Intent == "measure"
     if intent == "measure":
         t0 = time.perf_counter()
-        main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis)
+        main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis, filters=filters)
         t_main = time.perf_counter() - t0
 
         t0 = time.perf_counter()
@@ -1216,7 +1484,7 @@ def _sync_query_procurement_data(
 
     # 3. Main chart
     t0 = time.perf_counter()
-    main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis)
+    main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis, filters=filters)
     t_main = time.perf_counter() - t0
 
     # 4. Breakdown charts (cached by dataframe id, date_basis, filter_hash, measure, top_vendors_limit)

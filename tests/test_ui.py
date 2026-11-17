@@ -211,3 +211,19 @@ async def test_dashboard_ui_detail_table_thirteen_columns():
     for col in expected_cols:
         assert col in html
 
+
+@pytest.mark.asyncio
+async def test_dashboard_ui_drilldown_components():
+    """Verify drilldown navigation breadcrumbs, controls, and Yearly default are present."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/")
+
+    html = resp.text
+    assert 'id="chartDrilldownBreadcrumb"' in html
+    assert 'id="btnChartDrilldownBack"' in html
+    assert 'id="btnChartDrilldownReset"' in html
+    assert 'id="mainChartSubtitle"' in html
+    assert 'id="mainChartLoading"' in html
+    assert 'id="granYearly" value="Yearly" autocomplete="off" checked' in html
+

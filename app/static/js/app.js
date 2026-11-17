@@ -15,9 +15,20 @@
     // Application State
     const AppState = {
         // Stage 1 & Stage 2 Defaults (Active on page load)
-        granularity: "Monthly",   // "Daily" | "Weekly" | "Monthly" | "Yearly"
+        granularity: "Yearly",   // "Daily" | "Weekly" | "Monthly" | "Yearly"
         measure: "Spend",         // "Spend" | "Quantity"
         dateBasis: "Posting Date", // "Posting Date" | "Vendor's Doc Date"
+
+        // Cascading Drill-Down State (Year -> Month -> Week -> Date)
+        drilldown: {
+            level: "yearly", // "yearly" | "monthly" | "weekly" | "daily"
+            year: null,
+            month: null,
+            monthName: null,
+            week: null,
+            date: null,
+            history: []
+        },
 
         // Metadata & Datasets
         isLoaded: false,
@@ -225,7 +236,13 @@
         kpiFilteredSpend: document.getElementById("kpiFilteredSpend"),
         kpiFilteredRows: document.getElementById("kpiFilteredRows"),
         kpiActiveSelection: document.getElementById("kpiActiveSelection"),
-        mainChartTitle: document.getElementById("mainChartTitle")
+        mainChartTitle: document.getElementById("mainChartTitle"),
+        mainChartSubtitle: document.getElementById("mainChartSubtitle"),
+        mainChartCanvas: document.getElementById("mainChartCanvas"),
+        chartDrilldownBreadcrumb: document.getElementById("chartDrilldownBreadcrumb"),
+        btnChartDrilldownBack: document.getElementById("btnChartDrilldownBack"),
+        btnChartDrilldownReset: document.getElementById("btnChartDrilldownReset"),
+        mainChartLoading: document.getElementById("mainChartLoading")
     };
 
     /**
@@ -828,7 +845,395 @@
             updateOptions,
             updateActiveSummary,
             refreshUI,
-            reset
+            reset,
+            setSelected,
+            getSelected
+        };
+    })();
+
+    /**
+     * Interactive Cascading Drill-Down Controller for Main Chart.
+     * Implements Year -> Month -> Week -> Date navigation.
+     * Synchronizes AppState.filters, visible filter controls, KPI cards, and all breakdown charts.
+     */
+    const ChartDrillDown = (function () {
+        const MONTH_NAMES = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        const MONTH_ABBRS = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ];
+
+        function parseMonthInfo(strOrNum) {
+            if (!strOrNum) return { num: 1, name: "January", abbr: "Jan" };
+            const s = String(strOrNum).trim();
+            const num = parseInt(s, 10);
+            if (!isNaN(num) && num >= 1 && num <= 12) {
+                return { num: num, name: MONTH_NAMES[num - 1], abbr: MONTH_ABBRS[num - 1] };
+            }
+            const lower = s.toLowerCase();
+            for (let i = 0; i < 12; i++) {
+                if (lower.startsWith(MONTH_ABBRS[i].toLowerCase()) || lower.startsWith(MONTH_NAMES[i].toLowerCase())) {
+                    return { num: i + 1, name: MONTH_NAMES[i], abbr: MONTH_ABBRS[i] };
+                }
+            }
+            return { num: 1, name: "January", abbr: "Jan" };
+        }
+
+        function updateTitleAndSubtitle() {
+            if (!DOM.mainChartTitle) return;
+            const measure = AppState.measure || "Spend";
+            const basis = AppState.dateBasis || "Posting Date";
+            const dd = AppState.drilldown;
+
+            if (dd.level === "yearly") {
+                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Yearly) – ${basis}`;
+                if (DOM.mainChartSubtitle) {
+                    DOM.mainChartSubtitle.textContent = "Double-click a bar to drill down (Year → Month → Week → Date)";
+                }
+            } else if (dd.level === "monthly") {
+                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Monthly) – ${dd.year}`;
+                if (DOM.mainChartSubtitle) {
+                    DOM.mainChartSubtitle.textContent = "Double-click a month to view weekly breakdown";
+                }
+            } else if (dd.level === "weekly") {
+                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Weekly) – ${dd.monthName || 'Month'} ${dd.year}`;
+                if (DOM.mainChartSubtitle) {
+                    DOM.mainChartSubtitle.textContent = "Double-click a week to view daily breakdown";
+                }
+            } else if (dd.level === "daily") {
+                if (dd.date) {
+                    const dateObj = new Date(dd.date);
+                    const dateFmt = !isNaN(dateObj) ? `${String(dateObj.getDate()).padStart(2, '0')} ${MONTH_NAMES[dateObj.getMonth()]} ${dateObj.getFullYear()}` : dd.date;
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Daily) – ${dateFmt}`;
+                    if (DOM.mainChartSubtitle) {
+                        DOM.mainChartSubtitle.textContent = "Single date filter applied across entire dashboard";
+                    }
+                } else if (dd.week) {
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Daily) – Week ${dd.week.week_num}, ${dd.monthName || ''} ${dd.year}`;
+                    if (DOM.mainChartSubtitle) {
+                        DOM.mainChartSubtitle.textContent = "Double-click a date to apply single-date filter";
+                    }
+                } else {
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Daily) – ${basis}`;
+                    if (DOM.mainChartSubtitle) {
+                        DOM.mainChartSubtitle.textContent = "Double-click a date to apply single-date filter";
+                    }
+                }
+            }
+        }
+
+        function renderBreadcrumbs() {
+            if (!DOM.chartDrilldownBreadcrumb) return;
+            const dd = AppState.drilldown;
+            const ol = DOM.chartDrilldownBreadcrumb;
+            ol.innerHTML = "";
+
+            const createItem = (text, level, isLast, clickData = {}) => {
+                const li = document.createElement("li");
+                li.className = `breadcrumb-item ${isLast ? 'active fw-bold text-dark' : ''}`;
+                if (isLast) {
+                    li.setAttribute("aria-current", "page");
+                    li.textContent = text;
+                } else {
+                    const a = document.createElement("a");
+                    a.href = "#";
+                    a.dataset.level = level;
+                    Object.entries(clickData).forEach(([k, v]) => { a.dataset[k] = v; });
+                    a.textContent = text;
+                    a.addEventListener("click", function (e) {
+                        e.preventDefault();
+                        navigateBreadcrumb(level, clickData);
+                    });
+                    li.appendChild(a);
+                }
+                return li;
+            };
+
+            // Level 1: Yearly
+            if (dd.level === "yearly") {
+                ol.appendChild(createItem("Yearly", "yearly", true));
+                if (DOM.btnChartDrilldownBack) DOM.btnChartDrilldownBack.classList.add("d-none");
+                if (DOM.btnChartDrilldownReset) DOM.btnChartDrilldownReset.classList.add("d-none");
+                return;
+            }
+
+            // Deeper level: show Back and Reset
+            if (DOM.btnChartDrilldownBack) DOM.btnChartDrilldownBack.classList.remove("d-none");
+            if (DOM.btnChartDrilldownReset) DOM.btnChartDrilldownReset.classList.remove("d-none");
+
+            ol.appendChild(createItem("Yearly", "yearly", false));
+
+            // Level 2: Year
+            if (dd.level === "monthly") {
+                ol.appendChild(createItem(String(dd.year), "monthly", true));
+                return;
+            }
+            ol.appendChild(createItem(String(dd.year), "monthly", false, { year: dd.year }));
+
+            // Level 3: Month
+            const monthLabel = dd.monthName || "Month";
+            if (dd.level === "weekly") {
+                ol.appendChild(createItem(monthLabel, "weekly", true));
+                return;
+            }
+            ol.appendChild(createItem(monthLabel, "weekly", false, { year: dd.year, month: dd.month, monthName: dd.monthName }));
+
+            // Level 4: Week
+            const weekLabel = dd.week ? `Week ${dd.week.week_num}` : "Week";
+            if (dd.level === "daily" && !dd.date) {
+                ol.appendChild(createItem(weekLabel, "daily", true));
+                return;
+            }
+            ol.appendChild(createItem(weekLabel, "daily", false, {
+                year: dd.year,
+                month: dd.month,
+                monthName: dd.monthName,
+                week: JSON.stringify(dd.week)
+            }));
+
+            // Level 4 Terminal: Date
+            if (dd.level === "daily" && dd.date) {
+                const dateObj = new Date(dd.date);
+                const dateFmt = !isNaN(dateObj) ? `${String(dateObj.getDate()).padStart(2, '0')} ${MONTH_NAMES[dateObj.getMonth()]}` : dd.date;
+                ol.appendChild(createItem(dateFmt, "date", true));
+            }
+        }
+
+        function navigateBreadcrumb(targetLevel, clickData) {
+            if (targetLevel === "yearly") {
+                resetDrillDown();
+            } else if (targetLevel === "monthly") {
+                drillToMonthly(clickData.year || AppState.drilldown.year);
+            } else if (targetLevel === "weekly") {
+                const yr = clickData.year || AppState.drilldown.year;
+                const mo = clickData.month || AppState.drilldown.month;
+                const moName = clickData.monthName || AppState.drilldown.monthName;
+                drillToWeekly(yr, mo, moName);
+            } else if (targetLevel === "daily") {
+                const yr = clickData.year || AppState.drilldown.year;
+                const mo = clickData.month || AppState.drilldown.month;
+                const moName = clickData.monthName || AppState.drilldown.monthName;
+                let week = null;
+                if (clickData.week) {
+                    try { week = typeof clickData.week === "string" ? JSON.parse(clickData.week) : clickData.week; } catch (e) {}
+                }
+                if (!week) week = AppState.drilldown.week;
+                drillToDaily(yr, mo, moName, week);
+            }
+        }
+
+        function drillToMonthly(yearVal) {
+            AppState.drilldown.level = "monthly";
+            AppState.drilldown.year = String(yearVal);
+            AppState.drilldown.month = null;
+            AppState.drilldown.monthName = null;
+            AppState.drilldown.week = null;
+            AppState.drilldown.date = null;
+
+            AppState.filters.year = [String(yearVal)];
+            AppState.filters.month = [];
+            AppState.filters.week = [];
+            AppState.filters.fromDate = null;
+            AppState.filters.toDate = null;
+
+            AppState.granularity = "Monthly";
+            syncControls();
+            renderBreadcrumbs();
+            updateTitleAndSubtitle();
+            executeQuery();
+        }
+
+        function drillToWeekly(yearVal, monthVal, monthName) {
+            AppState.drilldown.level = "weekly";
+            AppState.drilldown.year = String(yearVal);
+            AppState.drilldown.month = monthVal;
+            AppState.drilldown.monthName = monthName;
+            AppState.drilldown.week = null;
+            AppState.drilldown.date = null;
+
+            AppState.filters.year = [String(yearVal)];
+            AppState.filters.month = [String(monthVal)];
+            AppState.filters.week = [];
+            AppState.filters.fromDate = null;
+            AppState.filters.toDate = null;
+
+            AppState.granularity = "Weekly";
+            syncControls();
+            renderBreadcrumbs();
+            updateTitleAndSubtitle();
+            executeQuery();
+        }
+
+        function drillToDaily(yearVal, monthVal, monthName, weekObj) {
+            AppState.drilldown.level = "daily";
+            AppState.drilldown.year = String(yearVal);
+            AppState.drilldown.month = monthVal;
+            AppState.drilldown.monthName = monthName;
+            AppState.drilldown.week = weekObj;
+            AppState.drilldown.date = null;
+
+            AppState.filters.year = [String(yearVal)];
+            AppState.filters.month = [String(monthVal)];
+            AppState.filters.week = [];
+            AppState.filters.fromDate = weekObj ? weekObj.start_date : null;
+            AppState.filters.toDate = weekObj ? weekObj.end_date : null;
+
+            AppState.granularity = "Daily";
+            syncControls();
+            renderBreadcrumbs();
+            updateTitleAndSubtitle();
+            executeQuery();
+        }
+
+        function drillToDate(dateStr) {
+            AppState.drilldown.level = "daily";
+            AppState.drilldown.date = dateStr;
+
+            AppState.filters.fromDate = dateStr;
+            AppState.filters.toDate = dateStr;
+
+            AppState.granularity = "Daily";
+            syncControls();
+            renderBreadcrumbs();
+            updateTitleAndSubtitle();
+            executeQuery();
+        }
+
+        function handleBarDoubleClick(index) {
+            if (!ChartInstances.main) return;
+            const chart = ChartInstances.main;
+            const labels = chart.data.labels;
+            if (!labels || index < 0 || index >= labels.length) return;
+
+            const clickedLabel = labels[index];
+            const meta = (chart.data.meta && chart.data.meta[index]) || {};
+            const dd = AppState.drilldown;
+
+            if (dd.level === "yearly") {
+                // Level 1 -> Level 2 (Yearly to Monthly)
+                const yr = meta.year || clickedLabel;
+                drillToMonthly(yr);
+            } else if (dd.level === "monthly") {
+                // Level 2 -> Level 3 (Monthly to Weekly)
+                const moInfo = meta.month ? { num: meta.month, name: meta.month_name } : parseMonthInfo(clickedLabel);
+                drillToWeekly(dd.year, moInfo.num, moInfo.name);
+            } else if (dd.level === "weekly") {
+                // Level 3 -> Level 4 (Weekly to Daily)
+                let weekObj = meta;
+                if (!weekObj || !weekObj.start_date) {
+                    const yr = dd.year;
+                    const mo = dd.month;
+                    const match = String(clickedLabel).match(/Week\s*(\d+)/i);
+                    const wNum = match ? parseInt(match[1], 10) : (index + 1);
+                    weekObj = { week_num: wNum, label: clickedLabel, start_date: `${yr}-${String(mo).padStart(2, '0')}-01`, end_date: `${yr}-${String(mo).padStart(2, '0')}-28` };
+                }
+                drillToDaily(dd.year, dd.month, dd.monthName, weekObj);
+            } else if (dd.level === "daily") {
+                // Level 4 -> Terminal Date Selection
+                if (dd.date) {
+                    // Already at deepest level
+                    return;
+                }
+                let dateStr = meta.date;
+                if (!dateStr) {
+                    const dt = new Date(clickedLabel);
+                    if (!isNaN(dt)) {
+                        dateStr = dt.toISOString().slice(0, 10);
+                    } else {
+                        dateStr = clickedLabel;
+                    }
+                }
+                drillToDate(dateStr);
+            }
+        }
+
+        function navigateBack() {
+            const dd = AppState.drilldown;
+            if (dd.level === "daily" && dd.date) {
+                // Step back from exact date to week view
+                drillToDaily(dd.year, dd.month, dd.monthName, dd.week);
+            } else if (dd.level === "daily") {
+                // Step back from week daily to monthly weekly
+                drillToWeekly(dd.year, dd.month, dd.monthName);
+            } else if (dd.level === "weekly") {
+                // Step back from weekly to monthly
+                drillToMonthly(dd.year);
+            } else if (dd.level === "monthly") {
+                // Step back from monthly to yearly
+                resetDrillDown();
+            }
+        }
+
+        function resetDrillDown() {
+            AppState.drilldown = {
+                level: "yearly",
+                year: null,
+                month: null,
+                monthName: null,
+                week: null,
+                date: null,
+                history: []
+            };
+
+            // Clear only period drill-down filters (preserve unrelated filters like vendor/buyer!)
+            AppState.filters.year = [];
+            AppState.filters.month = [];
+            AppState.filters.week = [];
+            AppState.filters.day = [];
+            AppState.filters.fromDate = null;
+            AppState.filters.toDate = null;
+
+            AppState.granularity = "Yearly";
+            syncControls();
+            renderBreadcrumbs();
+            updateTitleAndSubtitle();
+            executeQuery();
+        }
+
+        function syncControls() {
+            // Sync Granularity Radio
+            if (DOM.granularityRadios) {
+                DOM.granularityRadios.forEach(radio => {
+                    radio.checked = (radio.value === AppState.granularity);
+                });
+            }
+
+            // Sync MultiSelect dropdowns
+            MultiSelectManager.setSelected("year", AppState.filters.year);
+            MultiSelectManager.refreshUI("year");
+
+            MultiSelectManager.setSelected("month", AppState.filters.month);
+            MultiSelectManager.refreshUI("month");
+
+            MultiSelectManager.setSelected("week", AppState.filters.week);
+            MultiSelectManager.refreshUI("week");
+
+            // Sync Date inputs
+            if (DOM.filterFromDate) DOM.filterFromDate.value = AppState.filters.fromDate || "";
+            if (DOM.filterToDate) DOM.filterToDate.value = AppState.filters.toDate || "";
+            if (DOM.btnClearDateRange) {
+                DOM.btnClearDateRange.style.display = (AppState.filters.fromDate || AppState.filters.toDate) ? "inline" : "none";
+            }
+
+            // Sync period visibility
+            updatePeriodFilterVisibility();
+        }
+
+        return {
+            parseMonthInfo,
+            updateTitleAndSubtitle,
+            renderBreadcrumbs,
+            handleBarDoubleClick,
+            navigateBack,
+            resetDrillDown,
+            syncControls,
+            drillToMonthly,
+            drillToWeekly,
+            drillToDaily,
+            drillToDate
         };
     })();
 
@@ -844,6 +1249,15 @@
             radio.addEventListener("change", function () {
                 if (this.checked) {
                     AppState.granularity = this.value;
+                    if (this.value === "Yearly") {
+                        AppState.drilldown.level = "yearly";
+                        AppState.drilldown.year = null;
+                        AppState.drilldown.month = null;
+                        AppState.drilldown.week = null;
+                        AppState.drilldown.date = null;
+                    }
+                    ChartDrillDown.renderBreadcrumbs();
+                    ChartDrillDown.updateTitleAndSubtitle();
                     updateGatingVisibility();
                 }
             });
@@ -855,6 +1269,7 @@
             radio.addEventListener("change", function () {
                 if (this.checked) {
                     AppState.measure = this.value;
+                    ChartDrillDown.updateTitleAndSubtitle();
                     updateGatingVisibility();
                 }
             });
@@ -866,10 +1281,79 @@
             radio.addEventListener("change", function () {
                 if (this.checked) {
                     AppState.dateBasis = this.value;
+                    ChartDrillDown.updateTitleAndSubtitle();
                     updateGatingVisibility();
                 }
             });
         });
+
+        // Chart Drill-Down Back & Reset Buttons
+        if (DOM.btnChartDrilldownBack) {
+            DOM.btnChartDrilldownBack.addEventListener("click", function (e) {
+                e.preventDefault();
+                ChartDrillDown.navigateBack();
+            });
+        }
+        if (DOM.btnChartDrilldownReset) {
+            DOM.btnChartDrilldownReset.addEventListener("click", function (e) {
+                e.preventDefault();
+                ChartDrillDown.resetDrillDown();
+            });
+        }
+
+        // Canvas Double-Click & Touch Double-Tap for Drill-Down
+        const mainCanvas = document.getElementById("mainChartCanvas");
+        if (mainCanvas) {
+            mainCanvas.addEventListener("dblclick", function (e) {
+                if (!ChartInstances.main) return;
+                const elements = ChartInstances.main.getElementsAtEventForMode(e, "nearest", { intersect: true }, false);
+                if (elements && elements.length > 0) {
+                    const idx = elements[0].index;
+                    ChartDrillDown.handleBarDoubleClick(idx);
+                }
+            });
+
+            // Mobile double-tap detection (<350ms between taps on same bar)
+            let lastTapTime = 0;
+            let lastTapIndex = -1;
+            mainCanvas.addEventListener("touchend", function (e) {
+                if (!ChartInstances.main) return;
+                const now = Date.now();
+                const timeDiff = now - lastTapTime;
+
+                if (!e.changedTouches || !e.changedTouches.length) return;
+                const touch = e.changedTouches[0];
+                const rect = mainCanvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+
+                const fakeEvent = {
+                    type: "click",
+                    chart: ChartInstances.main,
+                    native: e,
+                    x: x,
+                    y: y
+                };
+
+                const elements = ChartInstances.main.getElementsAtEventForMode(fakeEvent, "nearest", { intersect: true }, false);
+                if (!elements || !elements.length) {
+                    lastTapTime = 0;
+                    lastTapIndex = -1;
+                    return;
+                }
+
+                const currentIndex = elements[0].index;
+                if (timeDiff < 350 && timeDiff > 40 && lastTapIndex === currentIndex) {
+                    e.preventDefault();
+                    lastTapTime = 0;
+                    lastTapIndex = -1;
+                    ChartDrillDown.handleBarDoubleClick(currentIndex);
+                } else {
+                    lastTapTime = now;
+                    lastTapIndex = currentIndex;
+                }
+            }, { passive: false });
+        }
 
         // Reset Granularity
         if (DOM.btnResetGranularity) {
@@ -1247,6 +1731,17 @@
         AppState.granularity = null;
         AppState.measure = null;
         AppState.dateBasis = null;
+        AppState.drilldown = {
+            level: "yearly",
+            year: null,
+            month: null,
+            monthName: null,
+            week: null,
+            date: null,
+            history: []
+        };
+        ChartDrillDown.renderBreadcrumbs();
+        ChartDrillDown.updateTitleAndSubtitle();
 
         if (DOM.granularityRadios) {
             DOM.granularityRadios.forEach(radio => {
@@ -1292,6 +1787,19 @@
         const clearDateBtn = document.getElementById("btnClearDateRange");
         if (clearDateBtn) clearDateBtn.style.display = "none";
 
+        // Reset Drill-down state
+        AppState.drilldown = {
+            level: "yearly",
+            year: null,
+            month: null,
+            monthName: null,
+            week: null,
+            date: null,
+            history: []
+        };
+        ChartDrillDown.renderBreadcrumbs();
+        ChartDrillDown.updateTitleAndSubtitle();
+
         if (AppState.isLoaded && isFlowReady()) {
             AppState.tablePage = 1;
             executeQuery();
@@ -1316,6 +1824,7 @@
             top_vendors_limit: AppState.topVendorsLimit
         };
 
+        if (DOM.mainChartLoading) DOM.mainChartLoading.style.display = "block";
         try {
             const resp = await fetch("/api/procurement/query", {
                 method: "POST",
@@ -1342,6 +1851,8 @@
             }
         } catch (err) {
             console.error("Query execution failed:", err);
+        } finally {
+            if (DOM.mainChartLoading) DOM.mainChartLoading.style.display = "none";
         }
     }
 
@@ -1368,8 +1879,9 @@
             DOM.kpiActiveSelection.textContent = `${AppState.granularity} • ${AppState.measure} • ${AppState.dateBasis}`;
         }
         if (DOM.mainChartTitle) {
-            DOM.mainChartTitle.textContent = `Procurement ${AppState.measure} by Period (${AppState.granularity}) – ${AppState.dateBasis}`;
+            ChartDrillDown.updateTitleAndSubtitle();
         }
+        ChartDrillDown.renderBreadcrumbs();
 
         // Active filter summary & section badges
         MultiSelectManager.updateActiveSummary();
@@ -1441,6 +1953,13 @@
             ChartInstances.main.destroy();
         }
 
+        if (chartData && chartData.datasets) {
+            chartData.datasets.forEach(ds => {
+                ds.hoverBackgroundColor = "#2563eb";
+                ds.hoverBorderColor = "#1d4ed8";
+            });
+        }
+
         const ctx = canvas.getContext("2d");
         ChartInstances.main = new Chart(ctx, {
             type: "bar",
@@ -1448,6 +1967,9 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onHover: function (e, elements) {
+                    canvas.style.cursor = (elements && elements.length) ? "pointer" : "default";
+                },
                 scales: {
                     x: {
                         grid: { display: false }
@@ -1794,6 +2316,7 @@
         executeQuery: executeQuery,
         loadDataset: loadProcurementDataset,
         multiSelectManager: MultiSelectManager,
+        chartDrillDown: ChartDrillDown,
         indianCurrencyFormatter: IndianCurrencyFormatter,
         toggleFilterSidebar: toggleFilterSidebar,
         toggleAllFilterSections: toggleAllFilterSections,

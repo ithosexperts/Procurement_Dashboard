@@ -157,7 +157,7 @@ async def procurement_query_api(
             status_code=503,
             content={"status": "loading", "message": "Dataset is currently loading."},
         )
-    granularity = payload.get("granularity", "Monthly")
+    granularity = payload.get("granularity", "Yearly")
     measure = payload.get("measure", "Spend")
     date_basis = payload.get("date_basis", "Posting Date")
     filters = payload.get("filters", {})

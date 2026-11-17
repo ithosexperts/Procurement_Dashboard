@@ -76,10 +76,10 @@
                     <input type="radio" class="btn-check" name="granularity" id="granWeekly" value="Weekly" autocomplete="off">
                     <label class="btn btn-outline-primary" for="granWeekly">Weekly</label>
 
-                    <input type="radio" class="btn-check" name="granularity" id="granMonthly" value="Monthly" autocomplete="off" checked>
+                    <input type="radio" class="btn-check" name="granularity" id="granMonthly" value="Monthly" autocomplete="off">
                     <label class="btn btn-outline-primary" for="granMonthly">Monthly</label>
 
-                    <input type="radio" class="btn-check" name="granularity" id="granYearly" value="Yearly" autocomplete="off">
+                    <input type="radio" class="btn-check" name="granularity" id="granYearly" value="Yearly" autocomplete="off" checked>
                     <label class="btn btn-outline-primary" for="granYearly">Yearly</label>
                 </div>
             </div>
@@ -441,16 +441,45 @@
                 </div>
             </div>
 
-            <!-- Main Chart Card (CH1, CH2) -->
-            <div class="card chart-card mb-4">
-                <div class="chart-card-header">
-                    <h5 class="chart-card-title">
-                        <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>
-                        <span id="mainChartTitle">Procurement Analysis by Period</span>
-                    </h5>
-                    <span class="badge bg-light text-dark border" id="mainChartBadge">Vertical Bar Chart</span>
+            <!-- Main Chart Card (CH1, CH2) with Cascading Drill-Down -->
+            <div class="card chart-card mb-4" id="mainChartCard">
+                <div class="chart-card-header flex-wrap gap-2">
+                    <div>
+                        <h5 class="chart-card-title mb-0">
+                            <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>
+                            <span id="mainChartTitle">Procurement Spend by Period (Yearly) – Posting Date</span>
+                        </h5>
+                        <small class="text-muted d-block mt-1" id="mainChartSubtitle" style="font-size: 0.775rem;">
+                            Double-click a bar to drill down (Year &rarr; Month &rarr; Week &rarr; Date)
+                        </small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-light text-dark border" id="mainChartBadge">Vertical Bar Chart</span>
+                        <button type="button" class="btn btn-outline-secondary btn-xs py-1 px-2 d-none align-items-center gap-1 shadow-sm" id="btnChartDrilldownBack" title="Back to previous period">
+                            <i class="bi bi-arrow-left"></i> <span>Back</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-xs py-1 px-2 d-none align-items-center gap-1 shadow-sm" id="btnChartDrilldownReset" title="Reset drill-down to Yearly">
+                            <i class="bi bi-arrow-counterclockwise"></i> <span>Reset Drill-Down</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="chart-container-vertical">
+
+                <!-- Interactive Drill-Down Breadcrumb Trail -->
+                <div class="px-3 pt-2 pb-1 border-bottom bg-light bg-opacity-50" id="drilldownNavContainer">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0 py-1 px-2 rounded bg-white border align-items-center shadow-xs" id="chartDrilldownBreadcrumb" style="font-size: 0.8rem;">
+                            <li class="breadcrumb-item active" aria-current="page" data-level="yearly">
+                                <span class="fw-semibold text-primary"><i class="bi bi-calendar3 me-1"></i>Yearly</span>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <div class="chart-container-vertical position-relative">
+                    <div id="mainChartLoading" class="position-absolute top-50 start-50 translate-middle text-center bg-white bg-opacity-75 p-3 rounded shadow-sm" style="display: none; z-index: 10;">
+                        <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                        <div class="small text-muted mt-1 fw-semibold">Loading period data...</div>
+                    </div>
                     <canvas id="mainChartCanvas"></canvas>
                 </div>
             </div>

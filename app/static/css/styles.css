@@ -807,3 +807,43 @@ body {
         height: auto !important;
     }
 }
+
+/* Cascading Drill-Down Breadcrumbs and Controls */
+#chartDrilldownBreadcrumb {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    margin: 0;
+}
+
+#chartDrilldownBreadcrumb .breadcrumb-item {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+#chartDrilldownBreadcrumb .breadcrumb-item a {
+    color: #0284c7;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.15s ease;
+}
+
+#chartDrilldownBreadcrumb .breadcrumb-item a:hover {
+    color: #0369a1;
+    text-decoration: underline;
+}
+
+#chartDrilldownBreadcrumb .breadcrumb-item.active {
+    color: #1e293b;
+    font-weight: 700;
+}
+
+#btnChartDrilldownBack, #btnChartDrilldownReset {
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+#mainChartSubtitle {
+    color: #64748b;
+    letter-spacing: 0.01em;
+}
