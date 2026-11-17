@@ -1403,6 +1403,50 @@
             });
         }
 
+        // Mobile Sidebar Navigation Toggle & Backdrop
+        const btnToggleSidebarNav = document.getElementById("btnToggleSidebarNav");
+        const btnCloseSidebarNav = document.getElementById("btnCloseSidebarNav");
+        const sidebarNav = document.getElementById("appSidebar");
+        const backdropNav = document.getElementById("sidebarBackdrop");
+
+        function openSidebarNav() {
+            if (sidebarNav) sidebarNav.classList.add("show");
+            if (backdropNav) backdropNav.classList.add("show");
+            document.body.classList.add("sidebar-open");
+        }
+
+        function closeSidebarNav() {
+            if (sidebarNav) sidebarNav.classList.remove("show");
+            if (backdropNav) backdropNav.classList.remove("show");
+            document.body.classList.remove("sidebar-open");
+        }
+
+        if (btnToggleSidebarNav) {
+            btnToggleSidebarNav.addEventListener("click", function(e) {
+                e.preventDefault();
+                openSidebarNav();
+            });
+        }
+        if (btnCloseSidebarNav) {
+            btnCloseSidebarNav.addEventListener("click", function(e) {
+                e.preventDefault();
+                closeSidebarNav();
+            });
+        }
+        if (backdropNav) {
+            backdropNav.addEventListener("click", closeSidebarNav);
+        }
+
+        // Close sidebar when clicking any navigation link on small devices
+        const sidebarLinks = document.querySelectorAll(".sidebar-nav-link");
+        sidebarLinks.forEach(link => {
+            link.addEventListener("click", () => {
+                if (window.innerWidth < 992) {
+                    closeSidebarNav();
+                }
+            });
+        });
+
         // Global delegated click handler as fallback
         document.addEventListener("click", function (e) {
             const pdfTarget = e.target.closest("#btnExportPdf");
@@ -1955,8 +1999,12 @@
 
         if (chartData && chartData.datasets) {
             chartData.datasets.forEach(ds => {
-                ds.hoverBackgroundColor = "#2563eb";
-                ds.hoverBorderColor = "#1d4ed8";
+                ds.backgroundColor = "#1769D2";
+                ds.borderColor = "#123B78";
+                ds.borderWidth = 1;
+                ds.borderRadius = 4;
+                ds.hoverBackgroundColor = "#2688E8";
+                ds.hoverBorderColor = "#123B78";
             });
         }
 
@@ -1972,11 +2020,20 @@
                 },
                 scales: {
                     x: {
-                        grid: { display: false }
+                        grid: { display: false },
+                        ticks: {
+                            color: "#64748B",
+                            font: { family: "'Inter', sans-serif", size: 11, weight: "500" }
+                        }
                     },
                     y: {
                         beginAtZero: true,
+                        grid: {
+                            color: "#EEF3F8"
+                        },
                         ticks: {
+                            color: "#64748B",
+                            font: { family: "'Inter', sans-serif", size: 11 },
                             callback: function (val) {
                                 if (AppState.measure === "Spend") {
                                     return IndianCurrencyFormatter.formatCompact(val);
@@ -1988,9 +2045,17 @@
                 },
                 plugins: {
                     legend: {
-                        display: AppState.measure === "Quantity"
+                        display: AppState.measure === "Quantity",
+                        labels: {
+                            font: { family: "'Inter', sans-serif", size: 11 }
+                        }
                     },
                     tooltip: {
+                        backgroundColor: "#123B78",
+                        titleFont: { family: "'Inter', sans-serif", size: 12, weight: "bold" },
+                        bodyFont: { family: "'Inter', sans-serif", size: 12 },
+                        cornerRadius: 6,
+                        padding: 10,
                         callbacks: {
                             label: function (context) {
                                 const rawVal = context.raw;
@@ -2045,6 +2110,17 @@
             }
 
             const cData = breakdowns[cfg.key];
+            if (cData && cData.datasets) {
+                cData.datasets.forEach(ds => {
+                    ds.backgroundColor = "#1769D2";
+                    ds.borderColor = "#123B78";
+                    ds.borderWidth = 1;
+                    ds.borderRadius = 3;
+                    ds.hoverBackgroundColor = "#2688E8";
+                    ds.hoverBorderColor = "#123B78";
+                });
+            }
+
             const barHeight = Math.max(220, (cData.labels.length || 0) * 26);
             canvas.style.height = `${barHeight}px`;
 
@@ -2059,7 +2135,12 @@
                     scales: {
                         x: {
                             beginAtZero: true,
+                            grid: {
+                                color: "#EEF3F8"
+                            },
                             ticks: {
+                                color: "#64748B",
+                                font: { family: "'Inter', sans-serif", size: 11 },
                                 callback: function (val) {
                                     if (AppState.measure === "Spend") {
                                         return IndianCurrencyFormatter.formatCompact(val);
@@ -2069,14 +2150,26 @@
                             }
                         },
                         y: {
-                            grid: { display: false }
+                            grid: { display: false },
+                            ticks: {
+                                color: "#172B4D",
+                                font: { family: "'Inter', sans-serif", size: 11, weight: "500" }
+                            }
                         }
                     },
                     plugins: {
                         legend: {
-                            display: AppState.measure === "Quantity"
+                            display: AppState.measure === "Quantity",
+                            labels: {
+                                font: { family: "'Inter', sans-serif", size: 11 }
+                            }
                         },
                         tooltip: {
+                            backgroundColor: "#123B78",
+                            titleFont: { family: "'Inter', sans-serif", size: 12, weight: "bold" },
+                            bodyFont: { family: "'Inter', sans-serif", size: 12 },
+                            cornerRadius: 6,
+                            padding: 10,
                             callbacks: {
                                 label: function (context) {
                                     const rawVal = context.raw;
@@ -2230,6 +2323,10 @@
             if (DOM.loadingText) {
                 DOM.loadingText.textContent = isRefresh ? "Refreshing Data from Server..." : "Loading Procurement Data...";
             }
+        }
+
+        if (isRefresh) {
+            AppState.isLoaded = false;
         }
 
         const url = "/api/procurement/dataset" + (isRefresh ? "?refresh=true" : "");

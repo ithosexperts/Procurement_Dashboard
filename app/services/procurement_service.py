@@ -198,7 +198,7 @@ class ProcurementDataStore:
 
     @property
     def is_loaded(self) -> bool:
-        return self._df is not None and not self._df.empty
+        return self._df is not None and not self._df.empty and not self._is_loading
 
     @property
     def is_loading(self) -> bool:
@@ -233,7 +233,7 @@ class ProcurementDataStore:
 
     def start_background_load(self, force_refresh: bool = False) -> None:
         """Initiate background data load without blocking HTTP response."""
-        if self._df is not None and not self._df.empty and not force_refresh:
+        if self._df is not None and not self._df.empty and not force_refresh and not self._is_loading:
             return
         if self._is_loading or (self._load_task and not self._load_task.done()):
             return
@@ -269,11 +269,11 @@ class ProcurementDataStore:
 
     async def get_dataframe(self, force_refresh: bool = False) -> pd.DataFrame:
         """Return the loaded DataFrame, loading or refreshing if required."""
-        if self._df is not None and not force_refresh:
+        if self._df is not None and not force_refresh and not self._is_loading:
             return self._df
 
         async with self._lock:
-            if self._df is not None and not force_refresh:
+            if self._df is not None and not force_refresh and not self._is_loading:
                 return self._df
             self._is_loading = True
             self._load_error = None
@@ -293,7 +293,7 @@ class ProcurementDataStore:
         self._load_progress = "Fetching initial batch..."
 
         batch_size = 10000
-        stable_order = "DocNum,Document,Quantity,UoM"
+        stable_order = "DocNum,Document,Quantity,UoM,Brand,MOC,Industry,Group"
         first_resp = await api_request(
             table="VD_Procurement_Dashboard",
             action="select",
@@ -376,9 +376,9 @@ class ProcurementDataStore:
             actual_count, total_rows
         )
         if total_rows and actual_count < total_rows:
-            logger.warning(
-                "Procurement dataset is incomplete: expected %d rows, received %d",
-                total_rows, actual_count
+            raise ApiError(
+                f"Procurement dataset incomplete: expected {total_rows} rows from {target_db}, retrieved {actual_count}",
+                table="VD_Procurement_Dashboard",
             )
 
         # Numeric conversions (float64 to preserve exact monetary precision)
@@ -517,6 +517,10 @@ def _precompute_dataframe_columns(df: pd.DataFrame) -> None:
         dt_p = pd.to_datetime(df[POSTING_DATE_COL], errors="coerce")
         df["Posting_Daily_Label"] = dt_p.dt.strftime("%d-%b-%y").fillna("Unknown")
         df["Posting_Daily_Sort"] = dt_p
+        if f"{POSTING_DATE_COL}_ISO" not in df.columns:
+            df[f"{POSTING_DATE_COL}_ISO"] = dt_p.dt.strftime("%Y-%m-%d").fillna("")
+        if "Posting_Date_Formatted" not in df.columns:
+            df["Posting_Date_Formatted"] = dt_p.dt.strftime("%d-%b-%Y").fillna("")
 
     # 2. Vendor Doc Date Period Columns
     if "Vendor Doc Month" in df.columns and "Vendor Doc Year" in df.columns:
@@ -535,6 +539,10 @@ def _precompute_dataframe_columns(df: pd.DataFrame) -> None:
         dt_v = pd.to_datetime(df[VENDOR_DOC_DATE_COL], errors="coerce")
         df["Vendor_Doc_Daily_Label"] = dt_v.dt.strftime("%d-%b-%y").fillna("Unknown")
         df["Vendor_Doc_Daily_Sort"] = dt_v
+        if f"{VENDOR_DOC_DATE_COL}_ISO" not in df.columns:
+            df[f"{VENDOR_DOC_DATE_COL}_ISO"] = dt_v.dt.strftime("%Y-%m-%d").fillna("")
+        if "Vendor_Doc_Date_Formatted" not in df.columns:
+            df["Vendor_Doc_Date_Formatted"] = dt_v.dt.strftime("%d-%b-%Y").fillna("")
 
 
 def _apply_filter_condition(
@@ -778,8 +786,8 @@ def _compute_main_chart(
                     "datasets": [{
                         "label": "Spend (INR)",
                         "data": data,
-                        "backgroundColor": "#1e3a8a",
-                        "borderColor": "#172554",
+                        "backgroundColor": "#1769D2",
+                        "borderColor": "#123B78",
                         "borderWidth": 1,
                     }],
                     "meta": meta,
@@ -787,8 +795,8 @@ def _compute_main_chart(
             else:
                 uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
                 color_palette = [
-                    "#0f766e", "#2563eb", "#d97706", "#7c3aed",
-                    "#dc2626", "#059669", "#4f46e5", "#ea580c",
+                    "#1769D2", "#2688E8", "#123B78", "#16A36A",
+                    "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
                 ]
                 m_qty_map = df.groupby([month_col, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
                 datasets = []
@@ -839,8 +847,8 @@ def _compute_main_chart(
                     "datasets": [{
                         "label": "Spend (INR)",
                         "data": data,
-                        "backgroundColor": "#1e3a8a",
-                        "borderColor": "#172554",
+                        "backgroundColor": "#1769D2",
+                        "borderColor": "#123B78",
                         "borderWidth": 1,
                     }],
                     "meta": meta,
@@ -848,8 +856,8 @@ def _compute_main_chart(
             else:
                 uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
                 color_palette = [
-                    "#0f766e", "#2563eb", "#d97706", "#7c3aed",
-                    "#dc2626", "#059669", "#4f46e5", "#ea580c",
+                    "#1769D2", "#2688E8", "#123B78", "#16A36A",
+                    "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
                 ]
                 datasets = []
                 for idx, uom in enumerate(uoms):
@@ -895,8 +903,8 @@ def _compute_main_chart(
                         "datasets": [{
                             "label": "Spend (INR)",
                             "data": data,
-                            "backgroundColor": "#1e3a8a",
-                            "borderColor": "#172554",
+                            "backgroundColor": "#1769D2",
+                            "borderColor": "#123B78",
                             "borderWidth": 1,
                         }],
                         "meta": meta,
@@ -904,8 +912,8 @@ def _compute_main_chart(
                 else:
                     uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
                     color_palette = [
-                        "#0f766e", "#2563eb", "#d97706", "#7c3aed",
-                        "#dc2626", "#059669", "#4f46e5", "#ea580c",
+                        "#1769D2", "#2688E8", "#123B78", "#16A36A",
+                        "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
                     ]
                     date_qty_map = df.groupby([date_col_iso, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
                     datasets = []
@@ -940,8 +948,8 @@ def _compute_main_chart(
                 {
                     "label": "Spend (INR)",
                     "data": [round(float(v), 2) for v in grouped[SPEND_COL].tolist()],
-                    "backgroundColor": "#1e3a8a",
-                    "borderColor": "#172554",
+                    "backgroundColor": "#1769D2",
+                    "borderColor": "#123B78",
                     "borderWidth": 1,
                 }
             ],
@@ -954,8 +962,8 @@ def _compute_main_chart(
         meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else ""} for lbl in labels]
 
         color_palette = [
-            "#0f766e", "#2563eb", "#d97706", "#7c3aed",
-            "#dc2626", "#059669", "#4f46e5", "#ea580c",
+            "#1769D2", "#2688E8", "#123B78", "#16A36A",
+            "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
         ]
 
         qty_map = df.groupby([label_col, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
@@ -1043,8 +1051,8 @@ def _format_horizontal_chart(
                 {
                     "label": "Spend (INR)",
                     "data": values,
-                    "backgroundColor": "#0f766e",
-                    "borderColor": "#115e59",
+                    "backgroundColor": "#1769D2",
+                    "borderColor": "#123B78",
                     "borderWidth": 1,
                 }
             ],
@@ -1056,8 +1064,8 @@ def _format_horizontal_chart(
         uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
 
         color_palette = [
-            "#0f766e", "#2563eb", "#d97706", "#7c3aed",
-            "#dc2626", "#059669", "#4f46e5", "#ea580c",
+            "#1769D2", "#2688E8", "#123B78", "#16A36A",
+            "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
         ]
 
         # Fast single groupby across (cat_col, UOM_COL)
@@ -1119,8 +1127,8 @@ def _compute_top_vendors_chart(
                 {
                     "label": "Spend (INR)",
                     "data": data,
-                    "backgroundColor": "#1e3a8a",
-                    "borderColor": "#172554",
+                    "backgroundColor": "#1769D2",
+                    "borderColor": "#123B78",
                     "borderWidth": 1,
                 }
             ],
@@ -1133,8 +1141,8 @@ def _compute_top_vendors_chart(
             labels.append(f"Others ({len(others_vendors)} vendors)")
 
         color_palette = [
-            "#0f766e", "#2563eb", "#d97706", "#7c3aed",
-            "#dc2626", "#059669", "#4f46e5", "#ea580c",
+            "#1769D2", "#2688E8", "#123B78", "#16A36A",
+            "#38BDF8", "#0284C7", "#6366F1", "#0D9488",
         ]
 
         # Fast single groupby across (VENDOR_COL, UOM_COL)

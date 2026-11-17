@@ -96,20 +96,21 @@ async def procurement_dataset_api(
         data_store.start_background_load(force_refresh=True)
         return JSONResponse({
             "status": "loading",
-            "progress": "Refreshing procurement dataset...",
+            "progress": "Refreshing procurement dataset from database...",
             "record_count": 0,
             "data_as_of": "",
             "data_as_of_formatted": "--",
             "database": settings.api_database,
         })
 
-    if data_store.is_loaded:
+    if data_store.is_loading:
         return JSONResponse({
-            "status": "success",
-            "record_count": data_store.total_records,
-            "data_as_of": data_store.data_as_of.isoformat() if data_store.data_as_of else "",
-            "data_as_of_formatted": data_store.data_as_of_formatted,
-            "database": data_store._database,
+            "status": "loading",
+            "progress": data_store.load_progress,
+            "record_count": data_store.loaded_so_far,
+            "data_as_of": "",
+            "data_as_of_formatted": "--",
+            "database": settings.api_database,
         })
 
     if data_store.load_error:
@@ -125,9 +126,16 @@ async def procurement_dataset_api(
             },
         )
 
-    if not data_store.is_loading:
-        data_store.start_background_load(force_refresh=False)
+    if data_store.is_loaded:
+        return JSONResponse({
+            "status": "success",
+            "record_count": data_store.total_records,
+            "data_as_of": data_store.data_as_of.isoformat() if data_store.data_as_of else "",
+            "data_as_of_formatted": data_store.data_as_of_formatted,
+            "database": data_store._database,
+        })
 
+    data_store.start_background_load(force_refresh=False)
     return JSONResponse({
         "status": "loading",
         "progress": data_store.load_progress,

@@ -4,9 +4,11 @@ Unit tests for Procurement Service logic and business rules.
 import pytest
 import pandas as pd
 from unittest.mock import AsyncMock, patch
+from app.api.client import ApiError
 from app.services.procurement_service import (
     ProcurementDataStore,
     get_procurement_summary,
+    query_procurement_data,
     SPEND_COL,
     QTY_COL,
     UOM_COL,
@@ -141,7 +143,7 @@ async def test_load_data_uses_stable_order_by():
     store = ProcurementDataStore.get_instance()
     mock_batch = {
         "status": "success",
-        "totalRows": 25,
+        "totalRows": 2,
         "totalPages": 2,
         "data": [{"DocNum": 1, "Document": "AP Invoice", SPEND_COL: "100.0", QTY_COL: "1.0", UOM_COL: "MTR"}],
     }
@@ -158,7 +160,33 @@ async def test_load_data_uses_stable_order_by():
     assert len(recorded_calls) >= 2
     for call_kwargs in recorded_calls:
         assert "order_by" in call_kwargs
-        assert call_kwargs["order_by"] == "DocNum,Document,Quantity,UoM"
+        assert call_kwargs["order_by"] == "DocNum,Document,Quantity,UoM,Brand,MOC,Industry,Group"
+
+
+@pytest.mark.asyncio
+async def test_incomplete_dataset_raises_api_error():
+    """Verify that _load_data raises ApiError if retrieved row count is less than reported totalRows."""
+    store = ProcurementDataStore.get_instance()
+    mock_batch = {
+        "status": "success",
+        "totalRows": 100,
+        "totalPages": 1,
+        "data": [{"DocNum": 1, "Document": "AP Invoice", SPEND_COL: "100.0", QTY_COL: "1.0", UOM_COL: "MTR"}],
+    }
+
+    with patch("app.services.procurement_service.api_request", new_callable=AsyncMock, return_value=mock_batch):
+        with pytest.raises(ApiError, match="Procurement dataset incomplete"):
+            await store._load_data()
+
+
+def test_is_loaded_false_while_is_loading():
+    """Verify that is_loaded returns False whenever is_loading is True to prevent stale query execution."""
+    store = ProcurementDataStore.get_instance()
+    store._df = pd.DataFrame([{"DocNum": 1}])
+    store._is_loading = True
+    assert store.is_loaded is False
+    store._is_loading = False
+    assert store.is_loaded is True
 
 
 def test_client_database_target_defaults_to_operationsdb():
@@ -222,4 +250,86 @@ def test_top_vendors_editable_limit():
     res_all = _compute_top_vendors_chart(df, measure="Spend", limit=0)
     assert len(res_all["labels"]) == 25
     assert not any("Others" in lbl for lbl in res_all["labels"])
+
+
+def test_refresh_polling_race_condition_prevented():
+    """Verify that /api/procurement/dataset returns status='loading' while reload is in progress, even if old _df exists."""
+    from starlette.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app)
+    store = ProcurementDataStore.get_instance()
+    store._df = pd.DataFrame([{"DocNum": 1, SPEND_COL: 100.0}])
+    store._total_records = 43356
+    store._is_loading = False
+
+    # Simulate trigger of refresh
+    with patch.object(store, "start_background_load") as mock_start:
+        def set_loading(force_refresh=False):
+            store._is_loading = True
+        mock_start.side_effect = set_loading
+
+        r1 = client.get("/api/procurement/dataset?refresh=true")
+        assert r1.status_code == 200
+        assert r1.json()["status"] == "loading"
+        assert store.is_loading is True
+
+        # Polling attempt 2 (without refresh=true) while load is still running
+        r2 = client.get("/api/procurement/dataset")
+        assert r2.status_code == 200
+        assert r2.json()["status"] == "loading"
+        assert r2.json()["progress"] is not None
+
+        # When loading finishes with new records
+        store._is_loading = False
+        store._total_records = 43360
+        r3 = client.get("/api/procurement/dataset")
+        assert r3.status_code == 200
+        assert r3.json()["status"] == "success"
+        assert r3.json()["record_count"] == 43360
+
+
+@pytest.mark.asyncio
+async def test_zero_active_filters_all_granularities_retain_all_records():
+    """Verify that with zero active filters, Daily, Weekly, Monthly, and Yearly return identical record counts and spend."""
+    store = ProcurementDataStore.get_instance()
+    records = []
+    total_expected_spend = 0.0
+    for i in range(1, 101):
+        sp = 1000.55 + (i * 10.0)
+        total_expected_spend += sp
+        records.append({
+            "DocNum": 1000 + i,
+            "Document": "AP Invoice",
+            "Posting Date": f"2026-05-{(i % 28) + 1:02d} 00:00:00",
+            "Vendors Doc Date": f"2026-05-{(i % 28) + 1:02d} 00:00:00",
+            "Posting Year": 2026,
+            "Posting Month": 5,
+            "Posting Week": 20,
+            "Posting Day": (i % 7) + 1,
+            "Vendor Doc Year": 2026,
+            "Vendor Doc Month": 5,
+            "Vendor Doc Week": 20,
+            "Vendor Doc Day": (i % 7) + 1,
+            SPEND_COL: sp,
+            QTY_COL: 1.0,
+            UOM_COL: "MTR",
+        })
+    mock_df = pd.DataFrame(records)
+    store._df = mock_df
+    store._total_records = len(mock_df)
+    store._is_loading = False
+
+    for gran in ["Daily", "Weekly", "Monthly", "Yearly"]:
+        res = await query_procurement_data(
+            granularity=gran,
+            measure="Spend",
+            date_basis="Posting Date",
+            filters={},
+        )
+        assert res["record_count"] == 100
+        assert abs(res["total_spend"] - total_expected_spend) < 1e-4
+        chart_data = res["main_chart"]["datasets"][0]["data"]
+        assert abs(sum(chart_data) - total_expected_spend) < 0.5
+
 
