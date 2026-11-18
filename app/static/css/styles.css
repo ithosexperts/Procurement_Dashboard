@@ -861,6 +861,31 @@ body, .portal-body {
     color: #FFFFFF;
 }
 
+#btnOpenModalTopVendors {
+    border-color: #1A5FA8;
+    color: #1A5FA8;
+    font-weight: 500;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+}
+
+#btnOpenModalTopVendors:hover {
+    background-color: #1A5FA8;
+    color: #FFFFFF;
+}
+
+#btnOpenNewTabTopVendors {
+    border-color: #1A5FA8;
+    color: #1A5FA8;
+    font-weight: 600;
+    transition: all 0.15s ease-in-out;
+}
+
+#btnOpenNewTabTopVendors:hover {
+    background-color: #1A5FA8;
+    color: #FFFFFF;
+}
+
 .chart-container-vertical {
     position: relative;
     height: 340px;

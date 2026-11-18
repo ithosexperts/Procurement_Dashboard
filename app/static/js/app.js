@@ -69,6 +69,7 @@
 
         // Top Vendors editable limit (Req 14)
         topVendorsLimit: 50,
+        latestBreakdowns: null,
 
         // Detail Table State (TB4, TB5)
         tableSort: {
@@ -204,6 +205,9 @@
         iconToggleAll: document.getElementById("iconToggleAll"),
         selectTopVendorsLimit: document.getElementById("selectTopVendorsLimit"),
         btnToggleExpandTopVendors: document.getElementById("btnToggleExpandTopVendors"),
+        btnOpenModalTopVendors: document.getElementById("btnOpenModalTopVendors"),
+        modalTopVendors: document.getElementById("modalTopVendors"),
+        btnOpenNewTabTopVendors: document.getElementById("btnOpenNewTabTopVendors"),
         iconExpandTopVendors: document.getElementById("iconExpandTopVendors"),
         textExpandTopVendors: document.getElementById("textExpandTopVendors"),
         colTopVendors: document.getElementById("colTopVendors"),
@@ -1489,6 +1493,11 @@
                     btnExpandTopVendors.setAttribute("title", "Expand to full width");
                     btnExpandTopVendors.classList.remove("active");
                 }
+                const btnModal = document.getElementById("btnOpenModalTopVendors");
+                if (btnModal) {
+                    btnModal.classList.add("d-none");
+                    btnModal.classList.remove("d-inline-flex");
+                }
             } else {
                 colTopVendors.classList.remove("col-md-6");
                 colTopVendors.classList.add("col-12", "is-expanded");
@@ -1498,6 +1507,11 @@
                 if (btnExpandTopVendors) {
                     btnExpandTopVendors.setAttribute("title", "Collapse to half width");
                     btnExpandTopVendors.classList.add("active");
+                }
+                const btnModal = document.getElementById("btnOpenModalTopVendors");
+                if (btnModal) {
+                    btnModal.classList.remove("d-none");
+                    btnModal.classList.add("d-inline-flex");
                 }
             }
 
@@ -1517,6 +1531,358 @@
         if (btnExpandTopVendors) {
             btnExpandTopVendors.addEventListener("click", function (e) {
                 toggleExpandTopVendors(e);
+            });
+        }
+
+        // Open Modal Format for Top Vendors Chart
+        function openModalTopVendors(e) {
+            if (e) {
+                if (typeof e.preventDefault === "function") e.preventDefault();
+                if (typeof e.stopPropagation === "function") e.stopPropagation();
+            }
+            const modalEl = document.getElementById("modalTopVendors");
+            if (!modalEl) return;
+
+            // Sync modal header titles with current state
+            const modalTitle = document.getElementById("modalTopVendorsTitle");
+            const modalSubtitle = document.getElementById("modalTopVendorsSubtitle");
+            if (modalTitle && DOM.titleTopVendors) {
+                modalTitle.textContent = DOM.titleTopVendors.textContent;
+            }
+            if (modalSubtitle && DOM.subTitleTopVendors) {
+                modalSubtitle.textContent = DOM.subTitleTopVendors.textContent;
+            }
+
+            renderModalTopVendorsChart();
+
+            const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            bsModal.show();
+        }
+
+        function renderModalTopVendorsChart() {
+            const canvas = document.getElementById("chartTopVendorsModal");
+            if (!canvas || !AppState.latestBreakdowns || !AppState.latestBreakdowns.top_vendors) return;
+
+            if (ChartInstances.topVendorsModal) {
+                ChartInstances.topVendorsModal.destroy();
+            }
+
+            const cData = AppState.latestBreakdowns.top_vendors;
+            const numItems = cData.labels ? cData.labels.length : 0;
+            const barHeight = Math.max(300, numItems * 32);
+
+            const wrapper = document.getElementById("wrapperTopVendorsModal");
+            if (wrapper) wrapper.style.height = `${barHeight}px`;
+            canvas.style.height = `${barHeight}px`;
+
+            const ctx = canvas.getContext("2d");
+            ChartInstances.topVendorsModal = new Chart(ctx, {
+                type: "bar",
+                data: cData,
+                options: {
+                    indexAxis: "y",
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: "#F1F5F9" },
+                            ticks: {
+                                color: "#64748B",
+                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+                                callback: function (val) {
+                                    if (AppState.measure === "Spend") {
+                                        return IndianCurrencyFormatter.formatCompact(val);
+                                    }
+                                    return Number(val).toLocaleString("en-IN");
+                                }
+                            }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                autoSkip: false,
+                                color: "#1E293B",
+                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "500" },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: AppState.measure === "Quantity" },
+                        tooltip: {
+                            backgroundColor: "#0A2540",
+                            titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13, weight: "bold" },
+                            bodyFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+                            cornerRadius: 6,
+                            padding: 12,
+                            callbacks: {
+                                label: function (context) {
+                                    const rawVal = context.raw;
+                                    if (AppState.measure === "Spend") {
+                                        const compact = IndianCurrencyFormatter.formatCompact(rawVal, 2);
+                                        const exact = IndianCurrencyFormatter.formatExact(rawVal);
+                                        return [compact, `Exact Value: ${exact}`];
+                                    }
+                                    const num = Number(rawVal);
+                                    const formattedQty = num.toLocaleString("en-IN", {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 2
+                                    });
+                                    const label = context.dataset.label || "Quantity";
+                                    return `${label}: ${formattedQty}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            setTimeout(() => {
+                if (ChartInstances.topVendorsModal) {
+                    ChartInstances.topVendorsModal.resize();
+                }
+            }, 180);
+        }
+
+        // Open in New Tab with URL masked / untouched (about:blank with written document)
+        function openTopVendorsInNewTab(e) {
+            if (e) {
+                if (typeof e.preventDefault === "function") e.preventDefault();
+                if (typeof e.stopPropagation === "function") e.stopPropagation();
+            }
+
+            const canvas = document.getElementById("chartTopVendorsModal") || document.getElementById("chartTopVendors");
+            const chartData = AppState.latestBreakdowns ? AppState.latestBreakdowns.top_vendors : null;
+            const title = (DOM.titleTopVendors ? DOM.titleTopVendors.textContent : "9. Top Vendors");
+            const subTitle = (DOM.subTitleTopVendors ? DOM.subTitleTopVendors.textContent : "Ranked by Spend + Others");
+            const dateAsOf = (DOM.dataAsOfText ? DOM.dataAsOfText.textContent : "Data as of Latest");
+            const measure = AppState.measure || "Spend";
+            const dateBasis = AppState.dateBasis || "Posting Date";
+            const gran = AppState.granularity || "Monthly";
+
+            // Snapshot the chart canvas
+            const imgData = canvas ? canvas.toDataURL("image/png") : "";
+
+            // Open about:blank new tab to NEVER leak internal URLs or ports
+            const newTab = window.open("", "_blank");
+            if (!newTab) {
+                alert("Please allow popups to open the chart in a new tab.");
+                return;
+            }
+
+            let tableRowsHtml = "";
+            if (chartData && chartData.labels && chartData.datasets && chartData.datasets[0]) {
+                const labels = chartData.labels;
+                const vals = chartData.datasets[0].data || [];
+                const total = vals.reduce((a, b) => a + Number(b || 0), 0);
+                labels.forEach((label, idx) => {
+                    const val = Number(vals[idx] || 0);
+                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) + "%" : "0.0%";
+                    const formattedVal = measure === "Spend"
+                        ? IndianCurrencyFormatter.formatExact(val)
+                        : val.toLocaleString("en-IN");
+                    tableRowsHtml += `
+                        <tr>
+                            <td style="padding: 10px 14px; border-bottom: 1px solid #E2E8F0; color: #64748B; font-size: 13px;">${idx + 1}</td>
+                            <td style="padding: 10px 14px; border-bottom: 1px solid #E2E8F0; font-weight: 600; color: #0F172A; font-size: 13px;">${label}</td>
+                            <td style="padding: 10px 14px; border-bottom: 1px solid #E2E8F0; text-align: right; font-weight: 600; color: #165BAA; font-size: 13px;">${formattedVal}</td>
+                            <td style="padding: 10px 14px; border-bottom: 1px solid #E2E8F0; text-align: right; color: #64748B; font-size: 13px;">${pct}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title} - HoseXperts Procurement Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #F6F8FB;
+            color: #1E293B;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+        .header-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .title-area h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0A2540;
+            margin-bottom: 4px;
+        }
+        .title-area p {
+            font-size: 13px;
+            color: #64748B;
+            margin: 0;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #EEF4FB;
+            color: #165BAA;
+            border: 1px solid #C9DCF2;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid #CBD5E1;
+            background: #FFFFFF;
+            color: #334155;
+            transition: all 0.15s ease-in-out;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+        }
+        .btn-primary {
+            background: #0F3B6C;
+            border-color: #0F3B6C;
+            color: #FFFFFF;
+        }
+        .btn-primary:hover {
+            background: #0A2540;
+        }
+        .card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+            margin-bottom: 20px;
+        }
+        .chart-img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        th {
+            background: #09264A;
+            color: #FFFFFF;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 11px 14px;
+        }
+        @media print {
+            body { background: #FFFFFF; padding: 0; }
+            .btn-group { display: none; }
+            .card, .header-card { box-shadow: none; border-color: #CBD5E1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-card">
+            <div class="title-area">
+                <h1>${title}</h1>
+                <p>${subTitle} &bull; HoseXperts Procurement Analytics</p>
+                <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span class="badge">${measure}</span>
+                    <span class="badge">${dateBasis}</span>
+                    <span class="badge">${gran}</span>
+                    <span class="badge" style="background: #F1F5F9; color: #475569; border-color: #E2E8F0;">${dateAsOf}</span>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+                <button class="btn" onclick="window.close()">Close Tab</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 15px; font-weight: 700; color: #0A2540; margin-bottom: 16px;">Visual Spend Breakdown</h2>
+            <img class="chart-img" src="${imgData}" alt="${title}">
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 15px; font-weight: 700; color: #0A2540; margin-bottom: 16px;">Detailed Ranking Table</h2>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">#</th>
+                            <th>Vendor Name</th>
+                            <th style="text-align: right;">Total ${measure}</th>
+                            <th style="text-align: right; width: 100px;">% Share</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRowsHtml}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+            newTab.document.open();
+            newTab.document.write(html);
+            newTab.document.close();
+        }
+
+        const btnOpenModal = document.getElementById("btnOpenModalTopVendors");
+        if (btnOpenModal) {
+            btnOpenModal.addEventListener("click", function (e) {
+                openModalTopVendors(e);
+            });
+        }
+
+        const btnOpenNewTab = document.getElementById("btnOpenNewTabTopVendors");
+        if (btnOpenNewTab) {
+            btnOpenNewTab.addEventListener("click", function (e) {
+                openTopVendorsInNewTab(e);
+            });
+        }
+
+        const modalEl = document.getElementById("modalTopVendors");
+        if (modalEl) {
+            modalEl.addEventListener("shown.bs.modal", function () {
+                if (ChartInstances.topVendorsModal) {
+                    ChartInstances.topVendorsModal.resize();
+                }
             });
         }
 
@@ -1920,9 +2286,13 @@
                 clearDetailTable();
             } else {
                 if (DOM.noDataAlert) DOM.noDataAlert.style.display = "none";
+                AppState.latestBreakdowns = data.breakdown_charts;
                 renderMainChart(data.main_chart);
                 renderBreakdownCharts(data.breakdown_charts);
                 renderDetailTable(data.table_data);
+                if (document.getElementById("modalTopVendors") && document.getElementById("modalTopVendors").classList.contains("show")) {
+                    renderModalTopVendorsChart();
+                }
             }
         } catch (err) {
             console.error("Query execution failed:", err);
@@ -2444,6 +2814,8 @@
         toggleFilterSidebar: toggleFilterSidebar,
         toggleAllFilterSections: toggleAllFilterSections,
         toggleExpandTopVendors: toggleExpandTopVendors,
+        openModalTopVendors: openModalTopVendors,
+        openTopVendorsInNewTab: openTopVendorsInNewTab,
         exportPdf: exportPdf
     };
 
