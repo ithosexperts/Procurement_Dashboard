@@ -455,6 +455,9 @@
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-light text-dark border" id="mainChartBadge">Vertical Bar Chart</span>
+                        <button type="button" class="btn btn-outline-primary btn-xs py-1 px-2 d-flex align-items-center gap-1 shadow-sm btn-chart-modal" data-chart-key="main_chart" data-inst="main" data-title="Procurement Spend by Period" data-subtitle="Posting Date Breakdown" id="btnMainChartModal" title="Open in Modal format">
+                            <i class="bi bi-window-stack"></i> <span>Modal View</span>
+                        </button>
                         <button type="button" class="btn btn-outline-secondary btn-xs py-1 px-2 d-none align-items-center gap-1 shadow-sm" id="btnChartDrilldownBack" title="Back to previous period">
                             <i class="bi bi-arrow-left"></i> <span>Back</span>
                         </button>
@@ -494,11 +497,23 @@
 
             <div class="row g-3 mb-4">
                 <!-- 1. Import vs Domestic -->
-                <div class="col-md-6">
+                <div class="col-md-6 chart-col-expandable" id="colImportDomestic">
                     <div class="card chart-card h-100">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">1. Import vs Domestic</span>
-                            <small class="text-muted">Doc Currency</small>
+                        <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="chart-card-title">1. Import vs Domestic</span>
+                                <small class="text-muted d-block">Doc Currency</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="importDomestic" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                    <span class="d-none d-sm-inline">Expand</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="import_domestic" data-inst="importDomestic" data-title="1. Import vs Domestic" data-subtitle="Doc Currency" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-window-stack"></i>
+                                    <span class="d-none d-sm-inline">Modal View</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-container-horizontal">
                             <canvas id="chartImportDomestic"></canvas>
@@ -507,11 +522,23 @@
                 </div>
 
                 <!-- 2. Receiving State -->
-                <div class="col-md-6">
+                <div class="col-md-6 chart-col-expandable" id="colReceivingState">
                     <div class="card chart-card h-100">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">2. Receiving State</span>
-                            <small class="text-muted">Ship-To Location</small>
+                        <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="chart-card-title">2. Receiving State</span>
+                                <small class="text-muted d-block">Ship-To Location</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="receivingState" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                    <span class="d-none d-sm-inline">Expand</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="receiving_state" data-inst="receivingState" data-title="2. Receiving State" data-subtitle="Ship-To Location" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-window-stack"></i>
+                                    <span class="d-none d-sm-inline">Modal View</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-container-horizontal">
                             <canvas id="chartReceivingState"></canvas>
@@ -520,11 +547,23 @@
                 </div>
 
                 <!-- 3. Item Group -->
-                <div class="col-md-6">
+                <div class="col-md-6 chart-col-expandable" id="colItemGroup">
                     <div class="card chart-card h-100">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">3. Item Group</span>
-                            <small class="text-muted">Top Hierarchy</small>
+                        <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="chart-card-title">3. Item Group</span>
+                                <small class="text-muted d-block">Top Hierarchy</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="itemGroup" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                    <span class="d-none d-sm-inline">Expand</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="item_group" data-inst="itemGroup" data-title="3. Item Group" data-subtitle="Top Hierarchy" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-window-stack"></i>
+                                    <span class="d-none d-sm-inline">Modal View</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-container-horizontal">
                             <canvas id="chartItemGroup"></canvas>
@@ -533,11 +572,23 @@
                 </div>
 
                 <!-- 4. Sub Group 1 -->
-                <div class="col-md-6">
+                <div class="col-md-6 chart-col-expandable" id="colSubGroup1">
                     <div class="card chart-card h-100">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">4. Sub Group 1</span>
-                            <small class="text-muted">Category</small>
+                        <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="chart-card-title">4. Sub Group 1</span>
+                                <small class="text-muted d-block">Category</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="subGroup1" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                    <span class="d-none d-sm-inline">Expand</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="sub_group1" data-inst="subGroup1" data-title="4. Sub Group 1" data-subtitle="Category" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-window-stack"></i>
+                                    <span class="d-none d-sm-inline">Modal View</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-container-horizontal">
                             <canvas id="chartSubGroup1"></canvas>
@@ -546,11 +597,23 @@
                 </div>
 
                 <!-- 5. Sub Group 2 -->
-                <div class="col-md-6">
+                <div class="col-md-6 chart-col-expandable" id="colSubGroup2">
                     <div class="card chart-card h-100">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">5. Sub Group 2</span>
-                            <small class="text-muted">Sub-Category</small>
+                        <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="chart-card-title">5. Sub Group 2</span>
+                                <small class="text-muted d-block">Sub-Category</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="subGroup2" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                    <span class="d-none d-sm-inline">Expand</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="sub_group2" data-inst="subGroup2" data-title="5. Sub Group 2" data-subtitle="Sub-Category" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-window-stack"></i>
+                                    <span class="d-none d-sm-inline">Modal View</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-container-horizontal">
                             <canvas id="chartSubGroup2"></canvas>
@@ -559,11 +622,23 @@
                 </div>
 
                 <!-- 6. Brand -->
-                <div class="col-md-6">
+                <div class="col-md-6 chart-col-expandable" id="colBrand">
                     <div class="card chart-card h-100">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">6. Brand</span>
-                            <small class="text-muted">Manufacturer</small>
+                        <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="chart-card-title">6. Brand</span>
+                                <small class="text-muted d-block">Manufacturer</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="brand" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                    <span class="d-none d-sm-inline">Expand</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="brand" data-inst="brand" data-title="6. Brand" data-subtitle="Manufacturer" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-window-stack"></i>
+                                    <span class="d-none d-sm-inline">Modal View</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-container-horizontal">
                             <canvas id="chartBrand"></canvas>
@@ -572,11 +647,23 @@
                 </div>
 
                 <!-- 7. Buyer [Row Buyer] -->
-                <div class="col-md-6">
+                <div class="col-md-6 chart-col-expandable" id="colBuyer">
                     <div class="card chart-card h-100">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">7. Buyer</span>
-                            <small class="text-muted">Row Buyer</small>
+                        <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="chart-card-title">7. Buyer</span>
+                                <small class="text-muted d-block">Row Buyer</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="buyer" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                    <span class="d-none d-sm-inline">Expand</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="buyer" data-inst="buyer" data-title="7. Buyer" data-subtitle="Row Buyer" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-window-stack"></i>
+                                    <span class="d-none d-sm-inline">Modal View</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-container-horizontal">
                             <canvas id="chartBuyer"></canvas>
@@ -585,11 +672,23 @@
                 </div>
 
                 <!-- 8. Credit vs Advance [Purchase Type] -->
-                <div class="col-md-6">
+                <div class="col-md-6 chart-col-expandable" id="colPurchaseType">
                     <div class="card chart-card h-100">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">8. Credit vs Advance</span>
-                            <small class="text-muted">Purchase Type</small>
+                        <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="chart-card-title">8. Credit vs Advance</span>
+                                <small class="text-muted d-block">Purchase Type</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="purchaseType" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                    <span class="d-none d-sm-inline">Expand</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="purchase_type" data-inst="purchaseType" data-title="8. Credit vs Advance" data-subtitle="Purchase Type" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-window-stack"></i>
+                                    <span class="d-none d-sm-inline">Modal View</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-container-horizontal">
                             <canvas id="chartPurchaseType"></canvas>
@@ -598,7 +697,7 @@
                 </div>
 
                 <!-- 9. Top Vendors [BP Name] (CH8) -->
-                <div class="col-md-6" id="colTopVendors">
+                <div class="col-md-6 chart-col-expandable" id="colTopVendors">
                     <div class="card chart-card h-100" id="cardTopVendors">
                         <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <div>
@@ -616,11 +715,11 @@
                                         <option value="50" selected>Top 50</option>
                                     </select>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs" id="btnToggleExpandTopVendors" title="Expand to full width" style="height: 28px; font-size: 0.775rem;" onclick="window.ProcurementApp && window.ProcurementApp.toggleExpandTopVendors ? window.ProcurementApp.toggleExpandTopVendors(event) : null">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="topVendors" id="btnToggleExpandTopVendors" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
                                     <i class="bi bi-arrows-angle-expand" id="iconExpandTopVendors"></i>
                                     <span class="d-none d-sm-inline" id="textExpandTopVendors">Expand</span>
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none" id="btnOpenModalTopVendors" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;" onclick="window.ProcurementApp && window.ProcurementApp.openModalTopVendors ? window.ProcurementApp.openModalTopVendors(event) : null">
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="top_vendors" data-inst="topVendors" data-title="9. Top Vendors" data-subtitle="Ranked by Spend + Others" id="btnOpenModalTopVendors" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
                                     <i class="bi bi-window-stack"></i>
                                     <span class="d-none d-sm-inline">Modal View</span>
                                 </button>
@@ -633,11 +732,23 @@
                 </div>
 
                 <!-- 10. Vendor Group [Group] -->
-                <div class="col-md-6">
+                <div class="col-md-6 chart-col-expandable" id="colVendorGroup">
                     <div class="card chart-card h-100">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">10. Vendor Group</span>
-                            <small class="text-muted">BP Group</small>
+                        <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="chart-card-title">10. Vendor Group</span>
+                                <small class="text-muted d-block">BP Group</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs btn-chart-expand" data-inst="vendorGroup" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-arrows-angle-expand"></i>
+                                    <span class="d-none d-sm-inline">Expand</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 align-items-center gap-1 shadow-xs d-none btn-chart-modal" data-chart-key="vendor_group" data-inst="vendorGroup" data-title="10. Vendor Group" data-subtitle="BP Group" title="Open in Modal format" style="height: 28px; font-size: 0.775rem;">
+                                    <i class="bi bi-window-stack"></i>
+                                    <span class="d-none d-sm-inline">Modal View</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="chart-container-horizontal">
                             <canvas id="chartVendorGroup"></canvas>
@@ -704,8 +815,8 @@
     </div>
 </div>
 
-<!-- Modal Format for Top Vendors Chart -->
-<div class="modal fade" id="modalTopVendors" tabindex="-1" aria-labelledby="modalTopVendorsTitle" aria-hidden="true">
+<!-- Universal Modal Format for Any Chart (CH1 - CH10 & Main) -->
+<div class="modal fade" id="modalUniversalChart" tabindex="-1" aria-labelledby="modalUniversalChartTitle" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content shadow-lg border-0" style="border-radius: 12px; overflow: hidden;">
             <div class="modal-header py-2 px-3 bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -713,11 +824,11 @@
                     <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
                         <i class="bi bi-bar-chart-line-fill me-1"></i>Modal View
                     </span>
-                    <h5 class="modal-title fs-6 fw-bold text-dark mb-0" id="modalTopVendorsTitle">9. Top 50 Vendors</h5>
-                    <small class="text-muted" id="modalTopVendorsSubtitle">Ranked by Spend + Others</small>
+                    <h5 class="modal-title fs-6 fw-bold text-dark mb-0" id="modalUniversalChartTitle">Chart View</h5>
+                    <small class="text-muted" id="modalUniversalChartSubtitle">Dimension Analysis</small>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 d-flex align-items-center gap-1 shadow-xs" id="btnOpenNewTabTopVendors" title="Open in New Tab" style="height: 30px; font-size: 0.8rem;" onclick="window.ProcurementApp && window.ProcurementApp.openTopVendorsInNewTab ? window.ProcurementApp.openTopVendorsInNewTab(event) : null">
+                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 d-flex align-items-center gap-1 shadow-xs" id="btnUniversalModalOpenNewTab" title="Open in New Tab" style="height: 30px; font-size: 0.8rem;" onclick="window.ProcurementApp && window.ProcurementApp.openCurrentModalChartInNewTab ? window.ProcurementApp.openCurrentModalChartInNewTab(event) : null">
                         <i class="bi bi-box-arrow-up-right"></i>
                         <span>Open in New Tab</span>
                     </button>
@@ -726,9 +837,9 @@
             </div>
             <div class="modal-body p-3 bg-light">
                 <div class="card border-0 shadow-sm bg-white p-3" style="border-radius: 8px;">
-                    <div class="chart-container-horizontal" id="containerTopVendorsModal" style="max-height: 650px; overflow-y: auto;">
-                        <div class="chart-canvas-wrapper" id="wrapperTopVendorsModal" style="position: relative; width: 100%;">
-                            <canvas id="chartTopVendorsModal"></canvas>
+                    <div class="chart-container-horizontal" id="containerUniversalModalChart" style="max-height: 650px; overflow-y: auto;">
+                        <div class="chart-canvas-wrapper" id="wrapperUniversalModalChart" style="position: relative; width: 100%;">
+                            <canvas id="canvasUniversalModalChart"></canvas>
                         </div>
                     </div>
                 </div>
