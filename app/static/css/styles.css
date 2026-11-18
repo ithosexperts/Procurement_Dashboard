@@ -822,6 +822,33 @@ body, .portal-body {
     padding: 0.75rem;
 }
 
+#colTopVendors {
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), flex 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#containerTopVendors.is-expanded {
+    max-height: 560px;
+}
+
+#btnToggleExpandTopVendors {
+    border-color: #CBD5E1;
+    color: #475569;
+    font-weight: 500;
+    transition: all 0.15s ease-in-out;
+}
+
+#btnToggleExpandTopVendors:hover {
+    background-color: #EEF4FB;
+    border-color: #1A5FA8;
+    color: #1A5FA8;
+}
+
+#btnToggleExpandTopVendors.active {
+    background-color: #1A5FA8;
+    border-color: #1A5FA8;
+    color: #FFFFFF;
+}
+
 .chart-container-vertical {
     position: relative;
     height: 340px;

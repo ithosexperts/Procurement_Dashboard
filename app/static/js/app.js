@@ -203,6 +203,11 @@
         textToggleAll: document.getElementById("textToggleAll"),
         iconToggleAll: document.getElementById("iconToggleAll"),
         selectTopVendorsLimit: document.getElementById("selectTopVendorsLimit"),
+        btnToggleExpandTopVendors: document.getElementById("btnToggleExpandTopVendors"),
+        iconExpandTopVendors: document.getElementById("iconExpandTopVendors"),
+        textExpandTopVendors: document.getElementById("textExpandTopVendors"),
+        colTopVendors: document.getElementById("colTopVendors"),
+        containerTopVendors: document.getElementById("containerTopVendors"),
         titleTopVendors: document.getElementById("titleTopVendors"),
         subTitleTopVendors: document.getElementById("subTitleTopVendors"),
         dataAsOfText: document.getElementById("dataAsOfText"),
@@ -1428,6 +1433,14 @@
                 toggleAllFilterSections();
                 return;
             }
+
+            const expandVendorsTarget = e.target.closest("#btnToggleExpandTopVendors");
+            if (expandVendorsTarget && !expandVendorsTarget.hasAttribute("data-handled")) {
+                expandVendorsTarget.setAttribute("data-handled", "true");
+                setTimeout(() => expandVendorsTarget.removeAttribute("data-handled"), 400);
+                toggleExpandTopVendors();
+                return;
+            }
         });
 
         // Editable Selection for Number of Top Vendors (Req 14)
@@ -1442,6 +1455,53 @@
                     DOM.subTitleTopVendors.textContent = val === 0 ? "Ranked by Spend" : "Ranked by Spend + Others";
                 }
                 executeQuery();
+            });
+        }
+
+        // Expand / Collapse Top Vendors to full width
+        function toggleExpandTopVendors() {
+            const colTopVendors = document.getElementById("colTopVendors");
+            const containerTopVendors = document.getElementById("containerTopVendors");
+            const iconExpandTopVendors = document.getElementById("iconExpandTopVendors");
+            const textExpandTopVendors = document.getElementById("textExpandTopVendors");
+            const btnExpandTopVendors = document.getElementById("btnToggleExpandTopVendors");
+
+            if (!colTopVendors) return;
+            const isExpanded = colTopVendors.classList.contains("col-12");
+            if (isExpanded) {
+                colTopVendors.classList.remove("col-12");
+                colTopVendors.classList.add("col-md-6");
+                if (containerTopVendors) containerTopVendors.classList.remove("is-expanded");
+                if (iconExpandTopVendors) iconExpandTopVendors.className = "bi bi-arrows-angle-expand";
+                if (textExpandTopVendors) textExpandTopVendors.textContent = "Expand";
+                if (btnExpandTopVendors) {
+                    btnExpandTopVendors.setAttribute("title", "Expand to full width");
+                    btnExpandTopVendors.classList.remove("active");
+                }
+            } else {
+                colTopVendors.classList.remove("col-md-6");
+                colTopVendors.classList.add("col-12");
+                if (containerTopVendors) containerTopVendors.classList.add("is-expanded");
+                if (iconExpandTopVendors) iconExpandTopVendors.className = "bi bi-arrows-angle-contract";
+                if (textExpandTopVendors) textExpandTopVendors.textContent = "Collapse";
+                if (btnExpandTopVendors) {
+                    btnExpandTopVendors.setAttribute("title", "Collapse to half width");
+                    btnExpandTopVendors.classList.add("active");
+                }
+            }
+
+            setTimeout(() => {
+                if (ChartInstances.topVendors) {
+                    ChartInstances.topVendors.resize();
+                }
+            }, 180);
+        }
+
+        const btnExpandTopVendors = document.getElementById("btnToggleExpandTopVendors");
+        if (btnExpandTopVendors) {
+            btnExpandTopVendors.addEventListener("click", function (e) {
+                e.preventDefault();
+                toggleExpandTopVendors();
             });
         }
 
@@ -2059,7 +2119,7 @@
             }
 
             const cData = breakdowns[cfg.key];
-            const barHeight = Math.max(220, (cData.labels.length || 0) * 26);
+            const barHeight = Math.max(240, (cData.labels.length || 0) * 28);
             canvas.style.height = `${barHeight}px`;
 
             const ctx = canvas.getContext("2d");
@@ -2090,6 +2150,7 @@
                         y: {
                             grid: { display: false },
                             ticks: {
+                                autoSkip: false,
                                 color: "#1E293B",
                                 font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "500" }
                             }
