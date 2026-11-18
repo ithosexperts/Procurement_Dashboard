@@ -868,18 +868,39 @@ body, .portal-body {
 }
 
 .btn-chart-modal,
+#btnMainChartModal,
 #btnOpenModalTopVendors {
-    border-color: #1A5FA8;
-    color: #1A5FA8;
-    font-weight: 500;
+    background: linear-gradient(135deg, #0F3B6C 0%, #165BAA 100%) !important;
+    border-color: #0F3B6C !important;
+    color: #FFFFFF !important;
+    font-weight: 600;
+    box-shadow: 0 2px 5px rgba(15, 59, 108, 0.28);
     transition: all 0.15s ease-in-out;
     cursor: pointer;
 }
 
+.btn-chart-modal i,
+#btnMainChartModal i,
+#btnOpenModalTopVendors i,
+.btn-chart-modal span,
+#btnMainChartModal span,
+#btnOpenModalTopVendors span {
+    color: #FFFFFF !important;
+}
+
 .btn-chart-modal:hover,
-#btnOpenModalTopVendors:hover {
-    background-color: #1A5FA8;
-    color: #FFFFFF;
+.btn-chart-modal:focus,
+.btn-chart-modal:active,
+#btnMainChartModal:hover,
+#btnMainChartModal:focus,
+#btnMainChartModal:active,
+#btnOpenModalTopVendors:hover,
+#btnOpenModalTopVendors:focus,
+#btnOpenModalTopVendors:active {
+    background: linear-gradient(135deg, #0A2540 0%, #0F3B6C 100%) !important;
+    border-color: #0A2540 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 3px 7px rgba(15, 59, 108, 0.35);
 }
 
 #btnUniversalModalOpenNewTab,
