@@ -1459,17 +1459,28 @@
         }
 
         // Expand / Collapse Top Vendors to full width
-        function toggleExpandTopVendors() {
+        function toggleExpandTopVendors(e) {
+            if (e) {
+                if (typeof e.preventDefault === "function") e.preventDefault();
+                if (typeof e.stopPropagation === "function") e.stopPropagation();
+            }
+
+            const btnExpandTopVendors = document.getElementById("btnToggleExpandTopVendors");
+            if (btnExpandTopVendors) {
+                if (btnExpandTopVendors.hasAttribute("data-busy")) return;
+                btnExpandTopVendors.setAttribute("data-busy", "true");
+                setTimeout(() => btnExpandTopVendors.removeAttribute("data-busy"), 300);
+            }
+
             const colTopVendors = document.getElementById("colTopVendors");
             const containerTopVendors = document.getElementById("containerTopVendors");
             const iconExpandTopVendors = document.getElementById("iconExpandTopVendors");
             const textExpandTopVendors = document.getElementById("textExpandTopVendors");
-            const btnExpandTopVendors = document.getElementById("btnToggleExpandTopVendors");
 
             if (!colTopVendors) return;
-            const isExpanded = colTopVendors.classList.contains("col-12");
+            const isExpanded = colTopVendors.classList.contains("is-expanded") || colTopVendors.classList.contains("col-12");
             if (isExpanded) {
-                colTopVendors.classList.remove("col-12");
+                colTopVendors.classList.remove("col-12", "is-expanded");
                 colTopVendors.classList.add("col-md-6");
                 if (containerTopVendors) containerTopVendors.classList.remove("is-expanded");
                 if (iconExpandTopVendors) iconExpandTopVendors.className = "bi bi-arrows-angle-expand";
@@ -1480,7 +1491,7 @@
                 }
             } else {
                 colTopVendors.classList.remove("col-md-6");
-                colTopVendors.classList.add("col-12");
+                colTopVendors.classList.add("col-12", "is-expanded");
                 if (containerTopVendors) containerTopVendors.classList.add("is-expanded");
                 if (iconExpandTopVendors) iconExpandTopVendors.className = "bi bi-arrows-angle-contract";
                 if (textExpandTopVendors) textExpandTopVendors.textContent = "Collapse";
@@ -1490,18 +1501,22 @@
                 }
             }
 
+            if (ChartInstances.topVendors) {
+                ChartInstances.topVendors.resize();
+            }
+            window.dispatchEvent(new Event("resize"));
             setTimeout(() => {
                 if (ChartInstances.topVendors) {
                     ChartInstances.topVendors.resize();
                 }
-            }, 180);
+                window.dispatchEvent(new Event("resize"));
+            }, 260);
         }
 
         const btnExpandTopVendors = document.getElementById("btnToggleExpandTopVendors");
         if (btnExpandTopVendors) {
             btnExpandTopVendors.addEventListener("click", function (e) {
-                e.preventDefault();
-                toggleExpandTopVendors();
+                toggleExpandTopVendors(e);
             });
         }
 
@@ -2413,6 +2428,7 @@
         indianCurrencyFormatter: IndianCurrencyFormatter,
         toggleFilterSidebar: toggleFilterSidebar,
         toggleAllFilterSections: toggleAllFilterSections,
+        toggleExpandTopVendors: toggleExpandTopVendors,
         exportPdf: exportPdf
     };
 

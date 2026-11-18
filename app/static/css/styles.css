@@ -826,6 +826,12 @@ body, .portal-body {
     transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), flex 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+#colTopVendors.is-expanded {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
 #containerTopVendors.is-expanded {
     max-height: 560px;
 }
@@ -835,6 +841,7 @@ body, .portal-body {
     color: #475569;
     font-weight: 500;
     transition: all 0.15s ease-in-out;
+    cursor: pointer;
 }
 
 #btnToggleExpandTopVendors:hover {

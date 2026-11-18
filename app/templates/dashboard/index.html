@@ -617,7 +617,7 @@
                                         <option value="0">All Vendors</option>
                                     </select>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs" id="btnToggleExpandTopVendors" title="Expand to full width" style="height: 28px; font-size: 0.775rem;">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 shadow-xs" id="btnToggleExpandTopVendors" title="Expand to full width" style="height: 28px; font-size: 0.775rem;" onclick="window.ProcurementApp && window.ProcurementApp.toggleExpandTopVendors ? window.ProcurementApp.toggleExpandTopVendors(event) : null">
                                     <i class="bi bi-arrows-angle-expand" id="iconExpandTopVendors"></i>
                                     <span class="d-none d-sm-inline" id="textExpandTopVendors">Expand</span>
                                 </button>
