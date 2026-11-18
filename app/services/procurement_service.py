@@ -1305,17 +1305,27 @@ def _compute_detail_table(
 
     col_map = {
         "DocNum": "DocNum",
+        "DOC No.": "DocNum",
         "Document": DOC_COL,
+        "Doc": DOC_COL,
         "Document Type": "Document Type",
         "Posting Date": POSTING_DATE_COL,
+        "posting date": POSTING_DATE_COL,
         "Vendors Doc Date": VENDOR_DOC_DATE_COL,
+        "vendor date": VENDOR_DOC_DATE_COL,
         "BP Name": VENDOR_COL,
         "Item Code": "Item Code",
+        "item code": "Item Code",
         "Quantity": QTY_COL,
+        "Qty": QTY_COL,
         "UoM": UOM_COL,
+        "unit of measurement": UOM_COL,
         "Row Total (After Doc Disc)": SPEND_COL,
+        "row total": SPEND_COL,
         "Vendors Doc No.": "Vendors Doc No.",
+        "Ven's DOC no": "Vendors Doc No.",
         "Row Buyer": BUYER_COL,
+        "buyer": BUYER_COL,
     }
 
     cache_key = (id(df), sort_column, sort_direction.lower())

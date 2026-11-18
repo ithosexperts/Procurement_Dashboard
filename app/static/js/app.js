@@ -2843,16 +2843,16 @@
                     <td class="text-muted">${r["#"]}</td>
                     <td class="fw-bold">${r.DocNum}</td>
                     <td><span class="badge bg-${r.Document === 'AP Invoice' ? 'primary' : 'warning text-dark'}">${r.Document}</span></td>
-                    <td>${r["Document Type"]}</td>
-                    <td>${r["Posting Date"]}</td>
+                    <td class="text-truncate" style="max-width: 200px;" title="${r["BP Name"]}">${r["BP Name"]}</td>
+                    <td>${r["Vendors Doc No."]}</td>
                     <td>${r["Vendors Doc Date"]}</td>
-                    <td class="text-truncate" style="max-width: 180px;" title="${r["BP Name"]}">${r["BP Name"]}</td>
+                    <td>${r["Posting Date"]}</td>
                     <td>${r["Item Code"]}</td>
                     <td class="text-end font-monospace">${formattedQty}</td>
                     <td><span class="badge bg-light text-dark border">${r.UoM || "-"}</span></td>
                     <td class="text-end font-monospace fw-semibold ${isNeg ? 'text-danger' : 'text-dark'}">${formattedSpend}</td>
-                    <td>${r["Vendors Doc No."]}</td>
                     <td>${r["Row Buyer"]}</td>
+                    <td class="d-none">${r["Document Type"]}</td>
                 `;
                 DOM.detailTableBody.appendChild(tr);
             });
