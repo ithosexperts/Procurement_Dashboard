@@ -1319,6 +1319,7 @@ def _compute_detail_table(
         "Quantity": QTY_COL,
         "Qty": QTY_COL,
         "UoM": UOM_COL,
+        "UOM": UOM_COL,
         "unit of measurement": UOM_COL,
         "Row Total (After Doc Disc)": SPEND_COL,
         "row total": SPEND_COL,
