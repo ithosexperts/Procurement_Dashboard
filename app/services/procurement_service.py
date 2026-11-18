@@ -1348,8 +1348,7 @@ def _compute_detail_table(
     rows = []
     start_row = start_idx + 1
 
-    for row in paged_df.itertuples(index=False):
-        row_dict = row._asdict() if hasattr(row, "_asdict") else dict(zip(paged_df.columns, row))
+    for row_dict in paged_df.to_dict(orient="records"):
         qty_val = row_dict.get(QTY_COL)
         spend_val = row_dict.get(SPEND_COL)
 
