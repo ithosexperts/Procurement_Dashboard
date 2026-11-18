@@ -886,14 +886,20 @@ body, .portal-body {
 #btnOpenNewTabTopVendors {
     border-color: #1A5FA8;
     color: #1A5FA8;
+    background-color: #FFFFFF;
     font-weight: 600;
     transition: all 0.15s ease-in-out;
 }
 
 #btnUniversalModalOpenNewTab:hover,
-#btnOpenNewTabTopVendors:hover {
-    background-color: #1A5FA8;
-    color: #FFFFFF;
+#btnUniversalModalOpenNewTab:focus,
+#btnUniversalModalOpenNewTab:active,
+#btnOpenNewTabTopVendors:hover,
+#btnOpenNewTabTopVendors:focus,
+#btnOpenNewTabTopVendors:active {
+    background-color: #1A5FA8 !important;
+    border-color: #1A5FA8 !important;
+    color: #FFFFFF !important;
 }
 
 .chart-container-vertical {
