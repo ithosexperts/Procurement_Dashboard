@@ -822,6 +822,11 @@ body, .portal-body {
     padding: 0.75rem;
 }
 
+.chart-canvas-wrapper {
+    position: relative;
+    width: 100%;
+}
+
 #colTopVendors {
     transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), flex 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -833,7 +838,7 @@ body, .portal-body {
 }
 
 #containerTopVendors.is-expanded {
-    max-height: 560px;
+    max-height: 600px;
 }
 
 #btnToggleExpandTopVendors {

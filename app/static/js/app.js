@@ -2134,7 +2134,21 @@
             }
 
             const cData = breakdowns[cfg.key];
-            const barHeight = Math.max(240, (cData.labels.length || 0) * 28);
+            const numItems = cData.labels ? cData.labels.length : 0;
+            const barHeight = Math.max(260, numItems * 30);
+
+            // Sizing wrapper ensures Chart.js respects barHeight inside scrollable containers
+            let wrapper = canvas.parentElement;
+            if (!wrapper.classList.contains("chart-canvas-wrapper")) {
+                const parent = canvas.parentNode;
+                wrapper = document.createElement("div");
+                wrapper.className = "chart-canvas-wrapper";
+                wrapper.style.position = "relative";
+                wrapper.style.width = "100%";
+                parent.insertBefore(wrapper, canvas);
+                wrapper.appendChild(canvas);
+            }
+            wrapper.style.height = `${barHeight}px`;
             canvas.style.height = `${barHeight}px`;
 
             const ctx = canvas.getContext("2d");
@@ -2167,7 +2181,8 @@
                             ticks: {
                                 autoSkip: false,
                                 color: "#1E293B",
-                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "500" }
+                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "500" },
+                                padding: 8
                             }
                         }
                     },
