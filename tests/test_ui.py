@@ -108,6 +108,7 @@ async def test_dashboard_ui_all_eight_filter_sections():
     assert 'headingPeriod' in html
     assert 'id="filterFromDate"' in html
     assert 'id="filterToDate"' in html
+    assert 'id="filterFinancialYear"' in html
     assert 'id="filterYear"' in html
     assert 'id="filterMonth"' in html
     assert 'id="filterWeek"' in html

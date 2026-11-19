@@ -39,6 +39,7 @@
         filters: {
             fromDate: null,
             toDate: null,
+            financialYear: [],
             year: [],
             month: [],
             week: [],
@@ -472,6 +473,7 @@
         dateBasisRadios: document.querySelectorAll('input[name="dateBasis"]'),
 
         // Period Filter Subgroups (FT2)
+        filterGroupFinancialYear: document.getElementById("filterGroupFinancialYear"),
         filterGroupYear: document.getElementById("filterGroupYear"),
         filterGroupMonth: document.getElementById("filterGroupMonth"),
         filterGroupWeek: document.getElementById("filterGroupWeek"),
@@ -539,6 +541,11 @@
             DOM.filterGroupDateRange.style.display = "block";
         }
 
+        // Financial Year is always visible
+        if (DOM.filterGroupFinancialYear) {
+            DOM.filterGroupFinancialYear.style.display = "block";
+        }
+
         if (!DOM.filterGroupYear) return;
 
         // Yearly -> Year
@@ -560,7 +567,7 @@
         const instances = {};
 
         const sectionMap = {
-            year: 1, month: 1, week: 1, day: 1,
+            financialYear: 1, year: 1, month: 1, week: 1, day: 1,
             document: 2, documentType: 2, purchaseType: 2, docCurrency: 2,
             bpName: 3, vendorGroup: 3, industry: 3, vendorCity: 3, vendorState: 3, vendorCountry: 3,
             rowBuyer: 4,
@@ -2797,7 +2804,7 @@
         if (!filterOptions) return;
 
         const filterKeys = [
-            "year", "month", "week", "day",
+            "financialYear", "year", "month", "week", "day",
             "document", "documentType", "purchaseType", "docCurrency",
             "bpName", "vendorGroup", "industry", "vendorCity", "vendorState", "vendorCountry",
             "rowBuyer",

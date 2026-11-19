@@ -200,6 +200,28 @@ async def test_a3_a4_date_basis_switching(sample_procurement_df):
     assert "Aug-2026" in res_month_vdoc["main_chart"]["labels"]
 
 
+@pytest.mark.asyncio
+async def test_financial_year_filter_date_basis(sample_procurement_df):
+    """Verify financial year filter adapts to Posting Date vs Vendor's Doc Date basis."""
+    res_post = await query_procurement_data(date_basis="Posting Date")
+    assert "financialYear" in res_post["filter_options"]
+    fy_post_opts = [o["value"] for o in res_post["filter_options"]["financialYear"]]
+    assert "2026-27" in fy_post_opts
+
+    # Filter by financial year under Posting Date
+    res_filtered = await query_procurement_data(
+        date_basis="Posting Date",
+        filters={"financialYear": ["2026-27"]}
+    )
+    assert res_filtered["record_count"] == len(sample_procurement_df)
+
+    # Under Vendor's Doc Date
+    res_vdoc = await query_procurement_data(date_basis="Vendor's Doc Date")
+    assert "financialYear" in res_vdoc["filter_options"]
+    fy_vdoc_opts = [o["value"] for o in res_vdoc["filter_options"]["financialYear"]]
+    assert "2026-27" in fy_vdoc_opts
+
+
 # ── Test A9: Quantity by UoM analysis (DS4, CH2) ──────────────────────────────
 @pytest.mark.asyncio
 async def test_a9_quantity_by_uom(sample_procurement_df):

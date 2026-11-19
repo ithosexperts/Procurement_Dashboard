@@ -87,6 +87,19 @@ RECEIVING_STATE_COL = "Receiving State"
 RECEIVING_CITY_COL = "Receiving City"
 POSTING_DATE_COL = "Posting Date"
 VENDOR_DOC_DATE_COL = "Vendors Doc Date"
+POSTING_FY_COL = "Posting FY"
+VENDOR_DOC_FY_COL = "Vendor Doc FY"
+
+
+def _find_column(df: pd.DataFrame, col_name: str) -> str | None:
+    """Find a column in DataFrame by exact or case-insensitive match."""
+    if col_name in df.columns:
+        return col_name
+    target = col_name.strip().lower()
+    for c in df.columns:
+        if str(c).strip().lower() == target:
+            return c
+    return None
 
 # Item Attributes Columns (Section 2.1)
 ITEM_ATTRIBUTE_COLUMNS = [
@@ -417,6 +430,7 @@ class ProcurementDataStore:
             BUYER_COL, RECEIVING_STATE_COL, RECEIVING_CITY_COL,
             ITEM_GROUP_COL, SUB_GROUP1_COL, SUB_GROUP2_COL,
             "Item Code", "Item Name", BRAND_COL, "MOC", "Made To Order", UOM_COL,
+            POSTING_FY_COL, VENDOR_DOC_FY_COL,
         ] + ITEM_ATTRIBUTE_COLUMNS
 
         for col in categorical_cols:
@@ -560,6 +574,53 @@ def _precompute_dataframe_columns(df: pd.DataFrame) -> None:
         if "Vendor_Doc_Date_Formatted" not in df.columns:
             df["Vendor_Doc_Date_Formatted"] = dt_v.dt.strftime("%d-%b-%Y").fillna("")
 
+    # 3. Financial Year (FY) Columns
+    posting_fy = _find_column(df, "Posting FY")
+    if posting_fy and posting_fy != POSTING_FY_COL:
+        df[POSTING_FY_COL] = df[posting_fy]
+
+    vendor_doc_fy = _find_column(df, "Vendor Doc FY")
+    if vendor_doc_fy and vendor_doc_fy != VENDOR_DOC_FY_COL:
+        df[VENDOR_DOC_FY_COL] = df[vendor_doc_fy]
+
+    if POSTING_FY_COL not in df.columns:
+        if "Posting Year" in df.columns and "Posting Month" in df.columns:
+            y = df["Posting Year"]
+            m = df["Posting Month"]
+            next_y_short = (y + 1).astype(str).str[-2:]
+            curr_y_short = y.astype(str).str[-2:]
+            prev_y = (y - 1).astype(str)
+            df[POSTING_FY_COL] = np.where(
+                m >= 4,
+                y.astype(str) + "-" + next_y_short,
+                prev_y + "-" + curr_y_short
+            )
+        else:
+            df[POSTING_FY_COL] = "(Blank)"
+    elif not isinstance(df[POSTING_FY_COL].dtype, pd.CategoricalDtype):
+        df[POSTING_FY_COL] = df[POSTING_FY_COL].fillna("(Blank)").astype(str).replace(
+            {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
+        )
+
+    if VENDOR_DOC_FY_COL not in df.columns:
+        if "Vendor Doc Year" in df.columns and "Vendor Doc Month" in df.columns:
+            y = df["Vendor Doc Year"]
+            m = df["Vendor Doc Month"]
+            next_y_short = (y + 1).astype(str).str[-2:]
+            curr_y_short = y.astype(str).str[-2:]
+            prev_y = (y - 1).astype(str)
+            df[VENDOR_DOC_FY_COL] = np.where(
+                m >= 4,
+                y.astype(str) + "-" + next_y_short,
+                prev_y + "-" + curr_y_short
+            )
+        else:
+            df[VENDOR_DOC_FY_COL] = "(Blank)"
+    elif not isinstance(df[VENDOR_DOC_FY_COL].dtype, pd.CategoricalDtype):
+        df[VENDOR_DOC_FY_COL] = df[VENDOR_DOC_FY_COL].fillna("(Blank)").astype(str).replace(
+            {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
+        )
+
 
 def _apply_filter_condition(
     df: pd.DataFrame,
@@ -592,6 +653,7 @@ def _get_active_filters_mask(
     # 1. Period filters
     is_posting = (date_basis == "Posting Date")
     date_col_iso = f"{POSTING_DATE_COL}_ISO" if is_posting else f"{VENDOR_DOC_DATE_COL}_ISO"
+    fy_col = POSTING_FY_COL if is_posting else VENDOR_DOC_FY_COL
     year_col = "Posting Year" if is_posting else "Vendor Doc Year"
     month_col = "Posting Month" if is_posting else "Vendor Doc Month"
     week_col = "Posting Week" if is_posting else "Vendor Doc Week"
@@ -606,6 +668,12 @@ def _get_active_filters_mask(
             mask = c if mask is None else (mask & c)
         if to_date and date_col_iso in df.columns:
             c = (df[date_col_iso] <= to_date)
+            mask = c if mask is None else (mask & c)
+
+    # Financial Year
+    if exclude_key != "financialYear" and filters.get("financialYear"):
+        c = _apply_filter_condition(df, fy_col, filters["financialYear"])
+        if c is not None:
             mask = c if mask is None else (mask & c)
 
     # Year
@@ -1200,6 +1268,7 @@ def _compute_filter_options(
         return _facet_cache[cache_key]
 
     is_posting = (date_basis == "Posting Date")
+    fy_col = POSTING_FY_COL if is_posting else VENDOR_DOC_FY_COL
     year_col = "Posting Year" if is_posting else "Vendor Doc Year"
     month_col = "Posting Month" if is_posting else "Vendor Doc Month"
     week_col = "Posting Week" if is_posting else "Vendor Doc Week"
@@ -1210,7 +1279,7 @@ def _compute_filter_options(
     if filters.get("fromDate") or filters.get("toDate"):
         active_keys.add("calendar")
     for k in [
-        "year", "month", "week", "day", "document", "documentType", "purchaseType", "docCurrency",
+        "financialYear", "year", "month", "week", "day", "document", "documentType", "purchaseType", "docCurrency",
         "bpName", "vendorGroup", "industry", "vendorCity", "vendorState", "vendorCountry",
         "rowBuyer", "receivingState", "receivingCity", "itemGroup", "subGroup1", "subGroup2",
         "itemCode", "brand", "moc", "madeToOrder", "uom",
@@ -1232,6 +1301,7 @@ def _compute_filter_options(
         excluded_masks[k] = _get_active_filters_mask(df, date_basis, filters, exclude_key=k)
 
     filter_defs = [
+        ("financialYear", fy_col, False),
         ("year", year_col, True),
         ("month", month_col, True),
         ("week", week_col, True),
