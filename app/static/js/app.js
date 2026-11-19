@@ -152,6 +152,43 @@
         },
 
         /**
+         * Dynamic compact notation for quantities / numbers:
+         * >= 1,00,00,000 -> X Cr (or -X Cr)
+         * >= 1,00,000    -> X Lkh (or -X Lkh)
+         * >= 1,000       -> X Thd (or -X Thd)
+         * < 1,000        -> X
+         */
+        formatQuantityCompact(val, precision = 1) {
+            if (val === null || val === undefined || isNaN(val)) return "0";
+            const num = Number(val);
+            if (num === 0) return "0";
+            const sign = num < 0 ? "-" : "";
+            const abs = Math.abs(num);
+
+            let formattedNumber = "";
+            let unit = "";
+
+            if (abs >= 10000000) { // 1 Crore = 10,000,000
+                const cr = abs / 10000000;
+                formattedNumber = (cr % 1 === 0) ? cr.toString() : parseFloat(cr.toFixed(precision)).toString();
+                unit = " Cr";
+            } else if (abs >= 100000) { // 1 Lakh = 100,000
+                const lakh = abs / 100000;
+                formattedNumber = (lakh % 1 === 0) ? lakh.toString() : parseFloat(lakh.toFixed(precision)).toString();
+                unit = " Lkh";
+            } else if (abs >= 1000) { // 1 Thousand = 1,000
+                const th = abs / 1000;
+                formattedNumber = (th % 1 === 0) ? th.toString() : parseFloat(th.toFixed(precision)).toString();
+                unit = " Thd";
+            } else {
+                formattedNumber = (abs % 1 === 0) ? abs.toString() : parseFloat(abs.toFixed(precision)).toString();
+                unit = "";
+            }
+
+            return sign + formattedNumber + unit;
+        },
+
+        /**
          * Exact currency value formatted with Indian comma grouping and 2 decimal places.
          * e.g. 475252143.59 -> ₹47,52,52,143.59
          */
@@ -297,9 +334,7 @@
                     if (measure === "Spend") {
                         text = IndianCurrencyFormatter.formatCompact(numVal, 1);
                     } else {
-                        text = Number(numVal).toLocaleString("en-IN", {
-                            maximumFractionDigits: 1
-                        });
+                        text = IndianCurrencyFormatter.formatQuantityCompact(numVal, 1);
                     }
 
                     // ── Collision check: skip this label if its primary axis
@@ -1836,7 +1871,7 @@
                                         if (AppState.measure === "Spend") {
                                             return IndianCurrencyFormatter.formatCompact(val);
                                         }
-                                        return Number(val).toLocaleString("en-IN");
+                                        return IndianCurrencyFormatter.formatQuantityCompact(val);
                                     }
                                 }
                             }
@@ -1859,12 +1894,16 @@
                                             return [compact, `Exact Value: ${exact}`];
                                         }
                                         const num = Number(rawVal);
+                                        const compactQty = IndianCurrencyFormatter.formatQuantityCompact(rawVal, 2);
                                         const formattedQty = num.toLocaleString("en-IN", {
                                             minimumFractionDigits: 0,
                                             maximumFractionDigits: 2
                                         });
-                                        const uom = context.dataset.label ? `${context.dataset.label}: ` : "";
-                                        return `${uom}${formattedQty}`;
+                                        const uom = context.dataset.label ? `${context.dataset.label}: ` : "Quantity: ";
+                                        return [
+                                            `${uom}${compactQty}`,
+                                            `Exact Qty: ${formattedQty}`
+                                        ];
                                     }
                                 }
                             }
@@ -1905,7 +1944,7 @@
                                         if (AppState.measure === "Spend") {
                                             return IndianCurrencyFormatter.formatCompact(val);
                                         }
-                                        return Number(val).toLocaleString("en-IN");
+                                        return IndianCurrencyFormatter.formatQuantityCompact(val);
                                     }
                                 }
                             },
@@ -1937,12 +1976,16 @@
                                             return [compact, `Exact Value: ${exact}`];
                                         }
                                         const num = Number(rawVal);
+                                        const compactQty = IndianCurrencyFormatter.formatQuantityCompact(rawVal, 2);
                                         const formattedQty = num.toLocaleString("en-IN", {
                                             minimumFractionDigits: 0,
                                             maximumFractionDigits: 2
                                         });
                                         const label = context.dataset.label || "Quantity";
-                                        return `${label}: ${formattedQty}`;
+                                        return [
+                                            `${label}: ${compactQty}`,
+                                            `Exact Qty: ${formattedQty}`
+                                        ];
                                     }
                                 }
                             }
@@ -2878,7 +2921,7 @@
                                 if (AppState.measure === "Spend") {
                                     return IndianCurrencyFormatter.formatCompact(val);
                                 }
-                                return Number(val).toLocaleString("en-IN");
+                                return IndianCurrencyFormatter.formatQuantityCompact(val);
                             }
                         }
                     }
@@ -2907,13 +2950,17 @@
                                         `Exact Value: ${exact}`
                                     ];
                                 }
-                                const num = Number(rawVal);
+                                 const num = Number(rawVal);
+                                const compactQty = IndianCurrencyFormatter.formatQuantityCompact(rawVal, 2);
                                 const formattedQty = num.toLocaleString("en-IN", {
                                     minimumFractionDigits: 0,
                                     maximumFractionDigits: 2
                                 });
-                                const uom = context.dataset.label ? `${context.dataset.label}: ` : "";
-                                return `${uom}${formattedQty}`;
+                                const uom = context.dataset.label ? `${context.dataset.label}: ` : "Quantity: ";
+                                return [
+                                    `${uom}${compactQty}`,
+                                    `Exact Qty: ${formattedQty}`
+                                ];
                             }
                         }
                     }
@@ -2983,7 +3030,7 @@
                                 if (AppState.measure === "Spend") {
                                     return IndianCurrencyFormatter.formatCompact(val);
                                 }
-                                return Number(val).toLocaleString("en-IN");
+                                return IndianCurrencyFormatter.formatQuantityCompact(val);
                             }
                         }
                     },
@@ -3019,12 +3066,16 @@
                                     ];
                                 }
                                 const num = Number(rawVal);
+                                const compactQty = IndianCurrencyFormatter.formatQuantityCompact(rawVal, 2);
                                 const formattedQty = num.toLocaleString("en-IN", {
                                     minimumFractionDigits: 0,
                                     maximumFractionDigits: 2
                                 });
                                 const label = context.dataset.label || "Quantity";
-                                return `${label}: ${formattedQty}`;
+                                return [
+                                    `${label}: ${compactQty}`,
+                                    `Exact Qty: ${formattedQty}`
+                                ];
                             }
                         }
                     }

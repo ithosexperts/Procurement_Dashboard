@@ -424,6 +424,10 @@ class ProcurementDataStore:
                 series = df[col].fillna("(Blank)").astype(str).replace(
                     {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
                 )
+                if col == UOM_COL:
+                    series = series.str.strip().str.upper().replace(
+                        {"(BLANK)": "(Blank)", "NAN": "(Blank)", "NONE": "(Blank)", "NULL": "(Blank)"}
+                    )
                 if len(series) and series.nunique(dropna=False) < len(series) * 0.70:
                     df[col] = series.astype("category")
                 else:
@@ -496,6 +500,13 @@ def _precompute_dataframe_columns(df: pd.DataFrame) -> None:
     if df.empty:
         return
 
+    # Normalize UoM to standard uppercase (combines Mtr/MTR, Pcs/PCS, Coil/COIL, mm/MM, Kg/KG)
+    if UOM_COL in df.columns and not isinstance(df[UOM_COL].dtype, pd.CategoricalDtype):
+        uom_s = df[UOM_COL].astype(str).str.strip().str.upper().replace(
+            {"(BLANK)": "(Blank)", "NAN": "(Blank)", "NONE": "(Blank)", "": "(Blank)", "NULL": "(Blank)"}
+        )
+        df[UOM_COL] = uom_s
+
     # Pre-compute Import vs Domestic (eliminates df.copy() in CH3)
     if "ImportDomestic" not in df.columns:
         if CURRENCY_COL in df.columns:
@@ -558,6 +569,8 @@ def _apply_filter_condition(
     """Filter condition: OR within the filter (FT3)."""
     if not selected_values or col_name not in df.columns:
         return pd.Series(True, index=df.index)
+    if col_name == UOM_COL:
+        selected_values = [str(v).strip().upper() for v in selected_values]
     return df[col_name].isin(selected_values)
 
 
