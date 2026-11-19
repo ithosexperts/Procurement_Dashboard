@@ -395,6 +395,7 @@
         filterGroupMonth: document.getElementById("filterGroupMonth"),
         filterGroupWeek: document.getElementById("filterGroupWeek"),
         filterGroupDay: document.getElementById("filterGroupDay"),
+        filterGroupDateRange: document.getElementById("filterGroupDateRange"),
 
         // Filter Inputs
         filterFromDate: document.getElementById("filterFromDate"),
@@ -432,11 +433,11 @@
      * Update Gating visibility according to Rule FL3.
      */
     function updateGatingVisibility() {
+        updatePeriodFilterVisibility();
         const ready = isFlowReady();
         if (ready) {
             if (DOM.selectionPromptCard) DOM.selectionPromptCard.style.display = "none";
             if (DOM.dashboardMainContent) DOM.dashboardMainContent.style.display = "block";
-            updatePeriodFilterVisibility();
             if (AppState.isLoaded) {
                 executeQuery();
             }
@@ -451,6 +452,26 @@
      */
     function updatePeriodFilterVisibility() {
         const gran = AppState.granularity;
+
+        // Date Range is visible ONLY for Daily
+        if (DOM.filterGroupDateRange) {
+            const showDateRange = gran === "Daily";
+            DOM.filterGroupDateRange.style.display = showDateRange ? "" : "none";
+
+            // Remove date constraints when switching away from Daily
+            if (!showDateRange) {
+                AppState.filters.fromDate = null;
+                AppState.filters.toDate = null;
+
+                if (DOM.filterFromDate) {
+                    DOM.filterFromDate.value = "";
+                }
+                if (DOM.filterToDate) {
+                    DOM.filterToDate.value = "";
+                }
+            }
+        }
+
         if (!DOM.filterGroupYear) return;
 
         // Yearly -> Year
