@@ -108,6 +108,11 @@
         universalModal: null
     };
 
+    // Disable default animation for instant rendering & reliable PDF exports
+    if (typeof Chart !== "undefined" && Chart.defaults) {
+        Chart.defaults.animation = false;
+    }
+
     /**
      * Reusable Indian Numbering & Currency Formatter.
      * Implements dynamic compact notation (Cr / Lakh / Thousand) for financial chart axes
@@ -2462,9 +2467,9 @@
     /**
      * Export PDF (Req 2): Generates a high-resolution, multi-page executive PDF report containing ONLY
      * the bar graphs and their values, KPI strip, report header, and active filters. Excludes transactional table.
-     * Uses client-side html2pdf with clean page breaks and fallback to window.print().
+     * Generates a guaranteed 4-page A4 Landscape report using jsPDF and html2canvas, with fallback to html2pdf/window.print.
      */
-    function exportPdf() {
+    async function exportPdf() {
         const granElem = document.getElementById("printReportGranularity");
         if (granElem) {
             granElem.textContent = `${AppState.granularity || 'All'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}`;
@@ -2477,55 +2482,215 @@
         const btn = document.getElementById("btnExportPdf");
         const originalHtml = btn ? btn.innerHTML : "";
 
-        if (typeof html2pdf !== "undefined") {
+        if (btn) {
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span><span>Exporting PDF...</span>`;
+            btn.disabled = true;
+        }
+
+        // Staging container mounted in DOM with valid positive coordinates (opacity 0, pointer-events none)
+        const staging = document.createElement("div");
+        staging.id = "pdfStagingContainer";
+        staging.style.position = "fixed";
+        staging.style.left = "0px";
+        staging.style.top = "0px";
+        staging.style.opacity = "0";
+        staging.style.pointerEvents = "none";
+        staging.style.zIndex = "-99999";
+        staging.style.width = "1000px";
+        document.body.appendChild(staging);
+
+        function cleanup() {
+            if (staging.parentNode) {
+                staging.parentNode.removeChild(staging);
+            }
             if (btn) {
-                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span><span>Exporting PDF...</span>`;
-                btn.disabled = true;
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        }
+
+        try {
+            // Helper: Create a single A4 Landscape Page Container (width 1000px)
+            function createPageContainer() {
+                const page = document.createElement("div");
+                page.style.width = "1000px";
+                page.style.boxSizing = "border-box";
+                page.style.backgroundColor = "#FFFFFF";
+                page.style.padding = "16px 20px";
+                page.style.fontFamily = "'Plus Jakarta Sans', -apple-system, sans-serif";
+                page.style.color = "#0F172A";
+                return page;
             }
 
-            const container = document.createElement("div");
-            container.className = "pdf-export-content p-4 bg-white text-dark";
-            container.style.width = "1040px";
-            container.style.margin = "0 auto";
-            container.style.fontFamily = "'Plus Jakarta Sans', -apple-system, sans-serif";
-            container.style.color = "#0F172A";
-
-            // Mount offscreen so html2canvas computes accurate layout and dimensions
-            container.style.position = "fixed";
-            container.style.top = "-99999px";
-            container.style.left = "-99999px";
-            container.style.zIndex = "-9999";
-            document.body.appendChild(container);
-
-            function cleanup() {
-                if (container.parentNode) {
-                    container.parentNode.removeChild(container);
-                }
-                if (btn) {
-                    btn.innerHTML = originalHtml;
-                    btn.disabled = false;
-                }
+            // Helper: Running Header for Pages 2, 3, 4
+            function createRunningHeader(pageNum, totalPages = 4) {
+                const rHead = document.createElement("div");
+                rHead.style.display = "flex";
+                rHead.style.justifyContent = "space-between";
+                rHead.style.alignItems = "center";
+                rHead.style.borderBottom = "1.5px solid #0F3B6C";
+                rHead.style.paddingBottom = "8px";
+                rHead.style.marginBottom = "10px";
+                rHead.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 16px; font-weight: 800; color: #0A2540; letter-spacing: -0.02em;">HoseXperts</span>
+                        <span style="font-size: 11px; font-weight: 600; color: #0284C7; background: #E0F2FE; padding: 2px 7px; border-radius: 4px;">Procurement Analytics</span>
+                        <span style="font-size: 11px; color: #64748B; margin-left: 6px;">Executive Management Report</span>
+                    </div>
+                    <div style="text-align: right; font-size: 11px; color: #475569; font-weight: 600;">
+                        <span>Page ${pageNum} of ${totalPages}</span>
+                    </div>
+                `;
+                return rHead;
             }
 
-            // 1. Report Header
-            const header = document.createElement("div");
-            header.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2.5px solid #0F3B6C; padding-bottom: 12px; margin-bottom: 14px;">
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
-                            <span style="font-size: 20px; font-weight: 800; color: #0A2540; letter-spacing: -0.02em;">HoseXperts</span>
-                            <span style="font-size: 13px; font-weight: 600; color: #0284C7; background: #E0F2FE; padding: 2px 8px; border-radius: 4px;">Procurement Analytics</span>
-                        </div>
-                        <span style="font-size: 11px; color: #64748B;">Executive Procurement Report &bull; Database: OperationsDB</span>
+            // Helper: Section Banner for Breakdown Dimensions
+            function createSectionBanner(text, badgeText) {
+                const s = document.createElement("div");
+                s.style.display = "flex";
+                s.style.justifyContent = "space-between";
+                s.style.alignItems = "center";
+                s.style.padding = "6px 12px";
+                s.style.marginBottom = "10px";
+                s.style.borderRadius = "6px";
+                s.style.background = "linear-gradient(135deg, #F0F6FC 0%, #E6F0FA 100%)";
+                s.style.border = "1px solid #DCE6F1";
+                s.style.borderLeft = "4px solid #0F3B6C";
+                s.innerHTML = `
+                    <div style="font-size: 12.5px; font-weight: 700; color: #0A2540;">
+                        ${text} <span style="font-size: 10px; font-weight: 700; background: #FFFFFF; color: #0F3B6C; border: 1px solid #BFDBFE; padding: 2px 7px; border-radius: 4px; margin-left: 6px;">${badgeText}</span>
                     </div>
-                    <div style="text-align: right; font-size: 11px;">
-                        <div style="font-weight: 700; color: #0A2540; font-size: 12px;">${AppState.granularity || 'Yearly'} &bull; ${AppState.measure || 'Spend'} &bull; ${AppState.dateBasis || 'Posting Date'}</div>
-                        <div style="color: #64748B; margin-top: 2px;">${DOM.dataAsOfText ? DOM.dataAsOfText.textContent : 'Data as of Latest'}</div>
+                    <div style="font-size: 10.5px; color: #475569; font-weight: 500;">Horizontal bars &bull; Ranked largest to smallest</div>
+                `;
+                return s;
+            }
+
+            // Helper: Create a styled Chart Card with guaranteed rendered Image
+            function createChartCard(canvasId, instKey, titleText, subtitleText, heightPx = 205) {
+                const card = document.createElement("div");
+                card.style.flex = "1";
+                card.style.width = "calc(50% - 6px)";
+                card.style.border = "1px solid #E2E8F0";
+                card.style.borderRadius = "8px";
+                card.style.backgroundColor = "#FFFFFF";
+                card.style.overflow = "hidden";
+                card.style.boxShadow = "0 1px 2px rgba(10,37,64,0.04)";
+                card.style.display = "flex";
+                card.style.flexDirection = "column";
+
+                const head = document.createElement("div");
+                head.style.padding = "6px 10px";
+                head.style.background = "linear-gradient(135deg, #F0F6FC 0%, #E6F0FA 100%)";
+                head.style.borderBottom = "1.5px solid #DCE6F1";
+                head.style.borderLeft = "4px solid #0F3B6C";
+
+                const title = document.createElement("div");
+                title.style.fontSize = "12px";
+                title.style.fontWeight = "700";
+                title.style.color = "#0A2540";
+                title.style.letterSpacing = "-0.01em";
+                title.textContent = titleText;
+                head.appendChild(title);
+
+                if (subtitleText) {
+                    const sub = document.createElement("div");
+                    sub.style.fontSize = "10px";
+                    sub.style.fontWeight = "500";
+                    sub.style.color = "#475569";
+                    sub.style.marginTop = "1px";
+                    sub.textContent = subtitleText;
+                    head.appendChild(sub);
+                }
+                card.appendChild(head);
+
+                const body = document.createElement("div");
+                body.style.padding = "6px";
+                body.style.backgroundColor = "#FFFFFF";
+                body.style.display = "flex";
+                body.style.alignItems = "center";
+                body.style.justifyContent = "center";
+
+                const chartInst = (instKey && ChartInstances) ? ChartInstances[instKey] : null;
+                const sourceCanvas = document.getElementById(canvasId);
+
+                let imgUrl = "";
+                if (chartInst && typeof chartInst.toBase64Image === "function") {
+                    try {
+                        imgUrl = chartInst.toBase64Image("image/png", 1.0);
+                    } catch (e) {}
+                }
+                if (!imgUrl && sourceCanvas && typeof sourceCanvas.toDataURL === "function") {
+                    try {
+                        imgUrl = sourceCanvas.toDataURL("image/png");
+                    } catch (e) {}
+                }
+
+                if (imgUrl) {
+                    const img = document.createElement("img");
+                    img.src = imgUrl;
+                    img.style.maxWidth = "100%";
+                    img.style.maxHeight = `${heightPx}px`;
+                    img.style.height = `${heightPx}px`;
+                    img.style.width = "auto";
+                    img.style.objectFit = "contain";
+                    img.style.display = "block";
+                    body.appendChild(img);
+                } else if (sourceCanvas) {
+                    const clone = document.createElement("canvas");
+                    clone.width = sourceCanvas.width;
+                    clone.height = sourceCanvas.height;
+                    clone.style.maxWidth = "100%";
+                    clone.style.maxHeight = `${heightPx}px`;
+                    clone.style.height = `${heightPx}px`;
+                    clone.style.display = "block";
+                    const cCtx = clone.getContext("2d");
+                    cCtx.drawImage(sourceCanvas, 0, 0);
+                    body.appendChild(clone);
+                } else {
+                    body.innerHTML = `<div style="color: #94A3B8; font-size: 11px; padding: 20px;">No chart data</div>`;
+                }
+
+                card.appendChild(body);
+                return card;
+            }
+
+            function createTwoCardRow(cardA, cardB) {
+                const row = document.createElement("div");
+                row.style.display = "flex";
+                row.style.gap = "12px";
+                row.style.marginBottom = "10px";
+                if (cardA) row.appendChild(cardA);
+                if (cardB) row.appendChild(cardB);
+                return row;
+            }
+
+            // ── BUILD PAGE 1: Executive Overview & Main Period Chart ──
+            const page1 = createPageContainer();
+
+            // Page 1 Header
+            const header1 = document.createElement("div");
+            header1.style.display = "flex";
+            header1.style.justifyContent = "space-between";
+            header1.style.alignItems = "center";
+            header1.style.borderBottom = "2.5px solid #0F3B6C";
+            header1.style.paddingBottom = "10px";
+            header1.style.marginBottom = "12px";
+            header1.innerHTML = `
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                        <span style="font-size: 20px; font-weight: 800; color: #0A2540; letter-spacing: -0.02em;">HoseXperts</span>
+                        <span style="font-size: 13px; font-weight: 600; color: #0284C7; background: #E0F2FE; padding: 2px 8px; border-radius: 4px;">Procurement Analytics</span>
                     </div>
+                    <span style="font-size: 11px; color: #64748B;">Executive Procurement Report &bull; Database: OperationsDB</span>
+                </div>
+                <div style="text-align: right; font-size: 11px;">
+                    <div style="font-weight: 700; color: #0A2540; font-size: 12px;">${AppState.granularity || 'Yearly'} &bull; ${AppState.measure || 'Spend'} &bull; ${AppState.dateBasis || 'Posting Date'}</div>
+                    <div style="color: #64748B; margin-top: 2px;">${DOM.dataAsOfText ? DOM.dataAsOfText.textContent : 'Data as of Latest'}</div>
                 </div>
             `;
+            page1.appendChild(header1);
 
-            // 2. Active Filter Summary Strip
+            // Active Filters Summary Strip
             const filterSummaryDiv = document.createElement("div");
             const activeChips = [];
             if (AppState.filters.financialYear && AppState.filters.financialYear.length) {
@@ -2550,261 +2715,190 @@
 
             if (activeChips.length > 0) {
                 filterSummaryDiv.innerHTML = `
-                    <div style="background: #F0F6FC; border: 1px solid #BFDBFE; border-left: 4px solid #0284C7; border-radius: 6px; padding: 6px 12px; margin-bottom: 14px; font-size: 11px; color: #0F3B6C; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <div style="background: #F0F6FC; border: 1px solid #BFDBFE; border-left: 4px solid #0284C7; border-radius: 6px; padding: 6px 12px; margin-bottom: 12px; font-size: 11px; color: #0F3B6C; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <span style="font-weight: 700; text-transform: uppercase; font-size: 10px; color: #0284C7; letter-spacing: 0.04em;">Active Filters:</span>
                         <span>${activeChips.join(" &nbsp;&bull;&nbsp; ")}</span>
                     </div>
                 `;
             } else {
                 filterSummaryDiv.innerHTML = `
-                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px 12px; margin-bottom: 14px; font-size: 11px; color: #64748B;">
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px 12px; margin-bottom: 12px; font-size: 11px; color: #64748B;">
                         <span style="font-weight: 600;">Active Filters:</span> None (Full Dataset &bull; All records included)
                     </div>
                 `;
             }
+            page1.appendChild(filterSummaryDiv);
 
-            // 3. KPI Strip
+            // KPI Strip
             const spendVal = DOM.kpiFilteredSpend ? DOM.kpiFilteredSpend.textContent : "₹0";
             const rowsVal = DOM.kpiFilteredRows ? DOM.kpiFilteredRows.textContent : "0";
             const granText = `${AppState.granularity || 'Yearly'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}`;
             const kpiRow = document.createElement("div");
             kpiRow.innerHTML = `
-                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                    <div style="flex: 1; padding: 10px 14px; border: 1px solid #E2E8F0; border-left: 4px solid #0F3B6C; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(10,37,64,0.04);">
-                        <div style="font-size: 10.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em;">Filtered ${AppState.measure || 'Spend'}</div>
-                        <div style="font-size: 19px; font-weight: 800; color: #0A2540; margin-top: 2px;">${spendVal}</div>
+                <div style="display: flex; gap: 12px; margin-bottom: 14px;">
+                    <div style="flex: 1; padding: 8px 14px; border: 1px solid #E2E8F0; border-left: 4px solid #0F3B6C; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(10,37,64,0.04);">
+                        <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em;">Filtered ${AppState.measure || 'Spend'}</div>
+                        <div style="font-size: 18px; font-weight: 800; color: #0A2540; margin-top: 2px;">${spendVal}</div>
                     </div>
-                    <div style="flex: 1; padding: 10px 14px; border: 1px solid #E2E8F0; border-left: 4px solid #0284C7; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(10,37,64,0.04);">
-                        <div style="font-size: 10.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em;">Filtered Rows</div>
-                        <div style="font-size: 19px; font-weight: 800; color: #0284C7; margin-top: 2px;">${rowsVal}</div>
+                    <div style="flex: 1; padding: 8px 14px; border: 1px solid #E2E8F0; border-left: 4px solid #0284C7; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(10,37,64,0.04);">
+                        <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em;">Filtered Rows</div>
+                        <div style="font-size: 18px; font-weight: 800; color: #0284C7; margin-top: 2px;">${rowsVal}</div>
                     </div>
-                    <div style="flex: 1.2; padding: 10px 14px; border: 1px solid #E2E8F0; border-left: 4px solid #0D9488; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(10,37,64,0.04);">
-                        <div style="font-size: 10.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em;">Granularity Selection</div>
-                        <div style="font-size: 14px; font-weight: 700; color: #0D9488; margin-top: 5px;">${granText}</div>
+                    <div style="flex: 1.2; padding: 8px 14px; border: 1px solid #E2E8F0; border-left: 4px solid #0D9488; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(10,37,64,0.04);">
+                        <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em;">Granularity Selection</div>
+                        <div style="font-size: 13.5px; font-weight: 700; color: #0D9488; margin-top: 4px;">${granText}</div>
                     </div>
                 </div>
             `;
-
-            // Chart to Image Element Helper with Executive Sapphire Styling
-            function chartToElement(canvasId, titleText, subtitleText, maxHeightPx = 250) {
-                const canvas = document.getElementById(canvasId);
-                if (!canvas) return null;
-                const wrap = document.createElement("div");
-                wrap.style.border = "1px solid #E2E8F0";
-                wrap.style.borderRadius = "8px";
-                wrap.style.background = "#FFFFFF";
-                wrap.style.overflow = "hidden";
-                wrap.style.boxShadow = "0 1px 2px rgba(10,37,64,0.04)";
-                wrap.style.pageBreakInside = "avoid";
-                wrap.style.breakInside = "avoid";
-
-                const titleDiv = document.createElement("div");
-                titleDiv.style.padding = "7px 12px";
-                titleDiv.style.background = "linear-gradient(135deg, #F0F6FC 0%, #E6F0FA 100%)";
-                titleDiv.style.borderBottom = "1.5px solid #DCE6F1";
-                titleDiv.style.borderLeft = "4px solid #0F3B6C";
-
-                const titleH = document.createElement("div");
-                titleH.style.fontSize = "12px";
-                titleH.style.fontWeight = "700";
-                titleH.style.color = "#0A2540";
-                titleH.style.letterSpacing = "-0.01em";
-                titleH.textContent = titleText;
-                titleDiv.appendChild(titleH);
-
-                if (subtitleText) {
-                    const sub = document.createElement("div");
-                    sub.style.fontSize = "10px";
-                    sub.style.fontWeight = "500";
-                    sub.style.color = "#475569";
-                    sub.style.marginTop = "1px";
-                    sub.textContent = subtitleText;
-                    titleDiv.appendChild(sub);
-                }
-                wrap.appendChild(titleDiv);
-
-                try {
-                    const img = document.createElement("img");
-                    img.src = canvas.toDataURL("image/png");
-                    img.style.width = "100%";
-                    img.style.maxHeight = `${maxHeightPx}px`;
-                    img.style.objectFit = "contain";
-                    img.style.display = "block";
-                    img.style.padding = "6px";
-                    img.style.backgroundColor = "#FFFFFF";
-                    wrap.appendChild(img);
-                } catch (e) {
-                    console.warn("Could not export canvas to image:", canvasId, e);
-                }
-                return wrap;
-            }
-
-            function makeSectionHeader(text, countBadge) {
-                const s = document.createElement("div");
-                s.style.display = "flex";
-                s.style.justifyContent = "space-between";
-                s.style.alignItems = "center";
-                s.style.padding = "6px 12px";
-                s.style.marginBottom = "10px";
-                s.style.borderRadius = "6px";
-                s.style.background = "linear-gradient(135deg, #F0F6FC 0%, #E6F0FA 100%)";
-                s.style.border = "1px solid #DCE6F1";
-                s.style.borderLeft = "4px solid #0F3B6C";
-                s.innerHTML = `
-                    <div style="font-size: 13px; font-weight: 700; color: #0A2540;">
-                        ${text} <span style="font-size: 10px; font-weight: 700; background: #FFFFFF; color: #0F3B6C; border: 1px solid #BFDBFE; padding: 2px 7px; border-radius: 4px; margin-left: 6px;">${countBadge}</span>
-                    </div>
-                    <div style="font-size: 10.5px; color: #475569; font-weight: 500;">Horizontal bars &bull; Ranked largest to smallest</div>
-                `;
-                return s;
-            }
-
-            function makeTwoCardRow(cardA, cardB) {
-                const row = document.createElement("div");
-                row.style.display = "flex";
-                row.style.gap = "12px";
-                row.style.marginBottom = "10px";
-                row.style.pageBreakInside = "avoid";
-                row.style.breakInside = "avoid";
-
-                if (cardA) {
-                    cardA.style.flex = "1";
-                    cardA.style.width = "calc(50% - 6px)";
-                    row.appendChild(cardA);
-                }
-                if (cardB) {
-                    cardB.style.flex = "1";
-                    cardB.style.width = "calc(50% - 6px)";
-                    row.appendChild(cardB);
-                }
-                return row;
-            }
-
-            // ── PAGE 1: Executive Summary & Main Period Chart ──
-            const page1 = document.createElement("div");
-            page1.style.pageBreakInside = "avoid";
-            page1.style.breakInside = "avoid";
-            page1.appendChild(header);
-            page1.appendChild(filterSummaryDiv);
             page1.appendChild(kpiRow);
 
+            // Main Period Chart
             const mainTitle = DOM.mainChartTitle ? DOM.mainChartTitle.textContent : "Procurement by Period";
             const mainSub = DOM.mainChartSubtitle ? DOM.mainChartSubtitle.textContent : "Posting Date Breakdown";
-            const mainChartWrap = chartToElement("mainChartCanvas", mainTitle, mainSub, 290);
-            if (mainChartWrap) page1.appendChild(mainChartWrap);
-            container.appendChild(page1);
+            const mainCard = createChartCard("mainChartCanvas", "main", mainTitle, mainSub, 250);
+            mainCard.style.width = "100%";
+            page1.appendChild(mainCard);
 
-            // Page Break 1
-            const pb1 = document.createElement("div");
-            pb1.className = "html2pdf__page-break";
-            pb1.style.pageBreakAfter = "always";
-            container.appendChild(pb1);
+            // Page 1 Footer
+            const footer1 = document.createElement("div");
+            footer1.style.marginTop = "14px";
+            footer1.style.display = "flex";
+            footer1.style.justifyContent = "space-between";
+            footer1.style.alignItems = "center";
+            footer1.style.fontSize = "10px";
+            footer1.style.color = "#64748B";
+            footer1.innerHTML = `
+                <div>HoseXperts Procurement Analytics &bull; Executive Overview</div>
+                <div>Page 1 of 4</div>
+            `;
+            page1.appendChild(footer1);
 
-            // ── PAGE 2: Breakdown Analysis (Cards 1 to 4) ──
-            const page2 = document.createElement("div");
-            page2.style.pageBreakInside = "avoid";
-            page2.style.breakInside = "avoid";
-            page2.appendChild(makeSectionHeader("Breakdown Analysis", "Dimensions 1 - 4 of 10"));
-            page2.appendChild(makeTwoCardRow(
-                chartToElement("chartImportDomestic", "1. Import vs Domestic", "Doc Currency"),
-                chartToElement("chartReceivingState", "2. Receiving State", "Ship-To Location")
+            // ── BUILD PAGE 2: Breakdown Analysis Dimensions 1 - 4 ──
+            const page2 = createPageContainer();
+            page2.appendChild(createRunningHeader(2, 4));
+            page2.appendChild(createSectionBanner("Breakdown Analysis", "Dimensions 1 - 4 of 10"));
+            page2.appendChild(createTwoCardRow(
+                createChartCard("chartImportDomestic", "importDomestic", "1. Import vs Domestic", "Doc Currency", 205),
+                createChartCard("chartReceivingState", "receivingState", "2. Receiving State", "Ship-To Location", 205)
             ));
-            page2.appendChild(makeTwoCardRow(
-                chartToElement("chartItemGroup", "3. Item Group", "Top Hierarchy"),
-                chartToElement("chartSubGroup1", "4. Sub Group 1", "Category")
-            ));
-            container.appendChild(page2);
-
-            // Page Break 2
-            const pb2 = document.createElement("div");
-            pb2.className = "html2pdf__page-break";
-            pb2.style.pageBreakAfter = "always";
-            container.appendChild(pb2);
-
-            // ── PAGE 3: Breakdown Analysis (Cards 5 to 8) ──
-            const page3 = document.createElement("div");
-            page3.style.pageBreakInside = "avoid";
-            page3.style.breakInside = "avoid";
-            page3.appendChild(makeSectionHeader("Breakdown Analysis (Continued)", "Dimensions 5 - 8 of 10"));
-            page3.appendChild(makeTwoCardRow(
-                chartToElement("chartSubGroup2", "5. Sub Group 2", "Sub-Category"),
-                chartToElement("chartBrand", "6. Brand", "Manufacturer")
-            ));
-            page3.appendChild(makeTwoCardRow(
-                chartToElement("chartBuyer", "7. Buyer", "Row Buyer"),
-                chartToElement("chartPurchaseType", "8. Credit vs Advance", "Purchase Type")
-            ));
-            container.appendChild(page3);
-
-            // Page Break 3
-            const pb3 = document.createElement("div");
-            pb3.className = "html2pdf__page-break";
-            pb3.style.pageBreakAfter = "always";
-            container.appendChild(pb3);
-
-            // ── PAGE 4: Breakdown Analysis (Cards 9 to 10) & Footer ──
-            const page4 = document.createElement("div");
-            page4.style.pageBreakInside = "avoid";
-            page4.style.breakInside = "avoid";
-            page4.appendChild(makeSectionHeader("Breakdown Analysis (Continued)", "Dimensions 9 - 10 of 10"));
-
-            const topVendorsTitle = (document.getElementById("titleTopVendors") ? document.getElementById("titleTopVendors").textContent : "9. Top Vendors");
-            const topVendorsSub = (document.getElementById("subTitleTopVendors") ? document.getElementById("subTitleTopVendors").textContent : "Ranked by Spend + Others");
-            page4.appendChild(makeTwoCardRow(
-                chartToElement("chartTopVendors", topVendorsTitle, topVendorsSub),
-                chartToElement("chartVendorGroup", "10. Vendor Group", "BP Group")
+            page2.appendChild(createTwoCardRow(
+                createChartCard("chartItemGroup", "itemGroup", "3. Item Group", "Top Hierarchy", 205),
+                createChartCard("chartSubGroup1", "subGroup1", "4. Sub Group 1", "Category", 205)
             ));
 
-            // Formal Report Footer
-            const footer = document.createElement("div");
-            footer.style.marginTop = "24px";
-            footer.style.paddingTop = "10px";
-            footer.style.borderTop = "1.5px solid #E2E8F0";
-            footer.style.display = "flex";
-            footer.style.justifyContent = "space-between";
-            footer.style.alignItems = "center";
-            footer.style.fontSize = "10.5px";
-            footer.style.color = "#64748B";
-            footer.innerHTML = `
-                <div>HoseXperts Procurement Analytics &bull; Internal Management Report</div>
+            // ── BUILD PAGE 3: Breakdown Analysis Dimensions 5 - 8 ──
+            const page3 = createPageContainer();
+            page3.appendChild(createRunningHeader(3, 4));
+            page3.appendChild(createSectionBanner("Breakdown Analysis (Continued)", "Dimensions 5 - 8 of 10"));
+            page3.appendChild(createTwoCardRow(
+                createChartCard("chartSubGroup2", "subGroup2", "5. Sub Group 2", "Sub-Category", 205),
+                createChartCard("chartBrand", "brand", "6. Brand", "Manufacturer", 205)
+            ));
+            page3.appendChild(createTwoCardRow(
+                createChartCard("chartBuyer", "buyer", "7. Buyer", "Row Buyer", 205),
+                createChartCard("chartPurchaseType", "purchaseType", "8. Credit vs Advance", "Purchase Type", 205)
+            ));
+
+            // ── BUILD PAGE 4: Breakdown Analysis Dimensions 9 - 10 & Sign-Off Footer ──
+            const page4 = createPageContainer();
+            page4.appendChild(createRunningHeader(4, 4));
+            page4.appendChild(createSectionBanner("Breakdown Analysis (Continued)", "Dimensions 9 - 10 of 10"));
+
+            const topVendorsTitle = (DOM.titleTopVendors ? DOM.titleTopVendors.textContent : "9. Top Vendors");
+            const topVendorsSub = (DOM.subTitleTopVendors ? DOM.subTitleTopVendors.textContent : "Ranked by Spend + Others");
+            page4.appendChild(createTwoCardRow(
+                createChartCard("chartTopVendors", "topVendors", topVendorsTitle, topVendorsSub, 270),
+                createChartCard("chartVendorGroup", "vendorGroup", "10. Vendor Group", "BP Group", 270)
+            ));
+
+            const footer4 = document.createElement("div");
+            footer4.style.marginTop = "20px";
+            footer4.style.paddingTop = "10px";
+            footer4.style.borderTop = "1.5px solid #E2E8F0";
+            footer4.style.display = "flex";
+            footer4.style.justifyContent = "space-between";
+            footer4.style.alignItems = "center";
+            footer4.style.fontSize = "10.5px";
+            footer4.style.color = "#64748B";
+            footer4.innerHTML = `
+                <div>Data Source: OperationsDB (VD_Procurement_Dashboard) &bull; HoseXperts Confidential</div>
                 <div>Generated: ${new Date().toLocaleString('en-IN')} &bull; Page 4 of 4</div>
             `;
-            page4.appendChild(footer);
-            container.appendChild(page4);
+            page4.appendChild(footer4);
 
-            const opt = {
-                margin: [8, 8, 8, 8],
-                filename: `HoseXperts_Procurement_Report_${AppState.granularity || 'All'}_${AppState.measure || 'Spend'}_${new Date().toISOString().slice(0, 10)}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: {
-                    scale: 2,
-                    useCORS: true,
-                    logging: false,
-                    scrollY: 0,
-                    scrollX: 0
-                },
-                jsPDF: {
-                    unit: 'mm',
-                    format: 'a4',
-                    orientation: 'landscape',
+            // Mount pages into staging
+            staging.appendChild(page1);
+            staging.appendChild(page2);
+            staging.appendChild(page3);
+            staging.appendChild(page4);
+
+            // Wait for all images across all 4 pages to complete decoding
+            const allImages = Array.from(staging.querySelectorAll("img"));
+            await Promise.all(allImages.map(img => {
+                if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+                if (img.decode) return img.decode().catch(() => {});
+                return new Promise(res => { img.onload = img.onerror = res; });
+            }));
+
+            // Small delay to ensure browser layout engine settles
+            await new Promise(r => setTimeout(r, 60));
+
+            // Check if jsPDF and html2canvas are available
+            const jsPdfClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+            const h2c = window.html2canvas;
+
+            if (jsPdfClass && h2c) {
+                const pdf = new jsPdfClass({
+                    orientation: "landscape",
+                    unit: "mm",
+                    format: "a4",
                     compress: true
-                },
-                pagebreak: {
-                    mode: ['css', 'legacy']
-                }
-            };
+                });
 
-            html2pdf().set(opt).from(container).save().then(() => {
+                const pages = [page1, page2, page3, page4];
+                const printableWidthMm = 277; // A4 landscape width (297) - 2 * 10mm margins = 277mm
+
+                for (let i = 0; i < pages.length; i++) {
+                    const canvas = await h2c(pages[i], {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: "#FFFFFF",
+                        logging: false
+                    });
+
+                    const imgData = canvas.toDataURL("image/jpeg", 0.98);
+                    const imgHeightMm = (canvas.height * printableWidthMm) / canvas.width;
+
+                    if (i > 0) {
+                        pdf.addPage("a4", "landscape");
+                    }
+                    pdf.addImage(imgData, "JPEG", 10, 8, printableWidthMm, imgHeightMm);
+                }
+
+                const filename = `HoseXperts_Procurement_Report_${AppState.granularity || 'All'}_${AppState.measure || 'Spend'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+                pdf.save(filename);
                 cleanup();
-            }).catch(err => {
-                console.warn("html2pdf save failed, falling back to window.print():", err);
+            } else if (typeof html2pdf !== "undefined") {
+                // Secondary fallback via html2pdf
+                const opt = {
+                    margin: [8, 10, 8, 10],
+                    filename: `HoseXperts_Procurement_Report_${AppState.granularity || 'All'}_${AppState.measure || 'Spend'}_${new Date().toISOString().slice(0, 10)}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+                    pagebreak: { mode: ['css', 'legacy'] }
+                };
+                await html2pdf().set(opt).from(staging).save();
+                cleanup();
+            } else {
                 cleanup();
                 window.print();
-            });
-        } else {
+            }
+        } catch (err) {
+            console.error("PDF export encountered an error, falling back to window.print():", err);
+            cleanup();
             window.print();
         }
-    }
     }
 
     /**
