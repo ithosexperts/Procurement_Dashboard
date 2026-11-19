@@ -489,7 +489,7 @@
 
             <!-- Ten Breakdown Horizontal Bar Charts (CH3) -->
             <div class="card border-0 shadow-sm mb-3">
-                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-left: 4px solid #0F3B6C; border-radius: 8px;">
+                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2" style="background: linear-gradient(135deg, #F0F6FC 0%, #E6F0FA 100%); border: 1px solid #DCE6F1; border-left: 4px solid #0F3B6C; border-radius: 8px;">
                     <div class="d-flex align-items-center gap-2">
                         <span class="d-inline-flex align-items-center justify-content-center text-white" style="width: 26px; height: 26px; border-radius: 6px; background: #0F3B6C; box-shadow: 0 1px 2px rgba(15, 59, 108, 0.25);">
                             <i class="bi bi-grid-fill" style="font-size: 0.8rem;"></i>
@@ -497,7 +497,7 @@
                         <h6 class="fw-bold mb-0" style="font-size: 0.925rem; letter-spacing: -0.01em; color: #0A2540;">
                             Breakdown Analysis
                         </h6>
-                        <span class="badge" style="background: #EBF3FC; color: #0F3B6C; font-weight: 700; font-size: 0.725rem; border: 1px solid #BFDBFE; border-radius: 6px; padding: 0.35rem 0.6rem;">10 Dimensions</span>
+                        <span class="badge" style="background: #FFFFFF; color: #0F3B6C; font-weight: 700; font-size: 0.725rem; border: 1px solid #BFDBFE; border-radius: 6px; padding: 0.35rem 0.6rem;">10 Dimensions</span>
                     </div>
                     <span class="small fw-medium" style="color: #475569; font-size: 0.775rem;"><i class="bi bi-bar-chart-steps me-1 text-primary"></i>Horizontal bars &bull; Ranked largest to smallest &bull; Scrollable</span>
                 </div>
@@ -833,16 +833,23 @@
 
             <!-- Detail Table Card (TB1 - TB5) -->
             <div class="card detail-table-card shadow-sm mb-4">
-                <div class="card-header bg-white py-3 border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <div>
-                        <h6 class="fw-bold mb-0 text-dark">
-                            <i class="bi bi-table text-primary me-2"></i>Transactional Data
-                        </h6>
-                        <small class="text-muted" id="tableRowsCountText">Rows 0–0 of 0</small>
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-flex align-items-center justify-content-center text-white" style="width: 28px; height: 28px; border-radius: 6px; background: #0F3B6C; box-shadow: 0 1px 2px rgba(15, 59, 108, 0.25);">
+                            <i class="bi bi-table" style="font-size: 0.85rem;"></i>
+                        </span>
+                        <div>
+                            <h6 class="fw-bold mb-0" style="color: #0A2540; font-size: 0.95rem; letter-spacing: -0.01em;">
+                                Transactional Data
+                            </h6>
+                            <small class="text-muted" id="tableRowsCountText" style="font-size: 0.75rem; font-weight: 500; color: #475569 !important;">Rows 0–0 of 0</small>
+                        </div>
                     </div>
                     <!-- Table Page Size / Info -->
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-light text-dark border">50 Rows / Page</span>
+                        <span class="badge" style="background: #FFFFFF; color: #0F3B6C; border: 1px solid #BFDBFE; font-weight: 600; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                            <i class="bi bi-file-earmark-spreadsheet me-1 text-primary"></i>50 Rows / Page
+                        </span>
                     </div>
                 </div>
 
