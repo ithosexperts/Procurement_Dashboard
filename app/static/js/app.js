@@ -1615,6 +1615,7 @@
         if (btnToggleSidebar) {
             btnToggleSidebar.addEventListener("click", function (e) {
                 e.preventDefault();
+                e.stopPropagation();
                 toggleFilterSidebar();
             });
         }
@@ -1624,33 +1625,14 @@
         if (btnToggleSections) {
             btnToggleSections.addEventListener("click", function (e) {
                 e.preventDefault();
+                e.stopPropagation();
                 toggleAllFilterSections();
             });
         }
 
         // Global delegated click handler as fallback
         document.addEventListener("click", function (e) {
-            const pdfTarget = e.target.closest("#btnExportPdf");
-            if (pdfTarget && !pdfTarget.hasAttribute("data-handled")) {
-                pdfTarget.setAttribute("data-handled", "true");
-                setTimeout(() => pdfTarget.removeAttribute("data-handled"), 400);
-                exportPdf();
-                return;
-            }
-
-            const sidebarTarget = e.target.closest("#btnToggleFilterSidebar");
-            if (sidebarTarget && !sidebarTarget.hasAttribute("data-handled")) {
-                sidebarTarget.setAttribute("data-handled", "true");
-                setTimeout(() => sidebarTarget.removeAttribute("data-handled"), 400);
-                toggleFilterSidebar();
-                return;
-            }
-
-            const sectionsTarget = e.target.closest("#btnToggleAllSections");
-            if (sectionsTarget && !sectionsTarget.hasAttribute("data-handled")) {
-                sectionsTarget.setAttribute("data-handled", "true");
-                setTimeout(() => sectionsTarget.removeAttribute("data-handled"), 400);
-                toggleAllFilterSections();
+            if (e.target.closest("#btnExportPdf, #btnToggleFilterSidebar, #btnToggleAllSections")) {
                 return;
             }
 
@@ -2305,7 +2287,14 @@
      * Collapse or Expand the left Filter Sidebar (Req 8).
      * When hidden, charts view expands to 100% full width (col-12).
      */
+    let _lastToggleSidebarTime = 0;
     function toggleFilterSidebar() {
+        const now = Date.now();
+        if (now - _lastToggleSidebarTime < 250) {
+            return;
+        }
+        _lastToggleSidebarTime = now;
+
         const sidebar = document.getElementById("filterSidebarCol");
         const mainView = document.getElementById("mainDashboardView");
         const toggleBtn = document.getElementById("btnToggleFilterSidebar");
@@ -2355,7 +2344,13 @@
     /**
      * Collapse or Expand all 8 filter accordion sections simultaneously (Req 8).
      */
+    let _lastToggleAllSectionsTime = 0;
     function toggleAllFilterSections() {
+        const now = Date.now();
+        if (now - _lastToggleAllSectionsTime < 250) {
+            return;
+        }
+        _lastToggleAllSectionsTime = now;
         const accordionCollapses = document.querySelectorAll("#filterAccordion .accordion-collapse");
         const anyClosed = Array.from(accordionCollapses).some(el => !el.classList.contains("show"));
 
