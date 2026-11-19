@@ -226,6 +226,16 @@
         afterDatasetsDraw(chart, args, options) {
             if (options && options.display === false) return;
 
+            // When Granularity is Daily, Weekly, or Monthly on the main period chart,
+            // suppress bar value labels to eliminate crowded/chaotic label collisions.
+            const isMainChart = chart.canvas && (
+                chart.canvas.id === "mainChartCanvas" ||
+                (chart.canvas.id === "canvasUniversalModalChart" && AppState.currentModalChart && AppState.currentModalChart.chartKey === "main_chart")
+            );
+            if (isMainChart && AppState.granularity !== "Yearly") {
+                return;
+            }
+
             const { ctx, chartArea } = chart;
             if (!chartArea) return;
             const isHorizontal = chart.config.options.indexAxis === "y";
@@ -1802,6 +1812,7 @@
                         },
                         plugins: {
                             legend: { display: AppState.measure === "Quantity" },
+                            barValueLabels: { display: AppState.granularity === "Yearly" },
                             tooltip: {
                                 backgroundColor: "#0A2540",
                                 titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13, weight: "bold" },
@@ -1876,6 +1887,7 @@
                         },
                         plugins: {
                             legend: { display: AppState.measure === "Quantity" },
+                            barValueLabels: { display: AppState.granularity === "Yearly" },
                             tooltip: {
                                 backgroundColor: "#0A2540",
                                 titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13, weight: "bold" },
@@ -2813,6 +2825,9 @@
                 plugins: {
                     legend: {
                         display: AppState.measure === "Quantity"
+                    },
+                    barValueLabels: {
+                        display: AppState.granularity === "Yearly"
                     },
                     tooltip: {
                         backgroundColor: "#0A2540",
