@@ -3046,7 +3046,7 @@
                 },
                 plugins: {
                     legend: {
-                        display: AppState.measure === "Quantity"
+                        display: false // Suppress repetitive legend; master legend is shown on main graph
                     },
                     tooltip: {
                         backgroundColor: "#0A2540",
