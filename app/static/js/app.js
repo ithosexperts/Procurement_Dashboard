@@ -2460,9 +2460,9 @@
     }
 
     /**
-     * Export PDF (Req 2): Generates a high-resolution PDF report containing ONLY the bar graphs
-     * and their values, KPI strip, and report header. Excludes transactional data and filter selections.
-     * Uses client-side html2pdf with fallback to window.print().
+     * Export PDF (Req 2): Generates a high-resolution, multi-page executive PDF report containing ONLY
+     * the bar graphs and their values, KPI strip, report header, and active filters. Excludes transactional table.
+     * Uses client-side html2pdf with clean page breaks and fallback to window.print().
      */
     function exportPdf() {
         const granElem = document.getElementById("printReportGranularity");
@@ -2479,83 +2479,159 @@
 
         if (typeof html2pdf !== "undefined") {
             if (btn) {
-                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span><span>Exporting...</span>`;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span><span>Exporting PDF...</span>`;
                 btn.disabled = true;
             }
 
             const container = document.createElement("div");
             container.className = "pdf-export-content p-4 bg-white text-dark";
-            container.style.width = "1100px";
+            container.style.width = "1040px";
             container.style.margin = "0 auto";
-            container.style.fontFamily = "'Plus Jakarta Sans', sans-serif";
+            container.style.fontFamily = "'Plus Jakarta Sans', -apple-system, sans-serif";
+            container.style.color = "#0F172A";
 
-            // Header
+            // Mount offscreen so html2canvas computes accurate layout and dimensions
+            container.style.position = "fixed";
+            container.style.top = "-99999px";
+            container.style.left = "-99999px";
+            container.style.zIndex = "-9999";
+            document.body.appendChild(container);
+
+            function cleanup() {
+                if (container.parentNode) {
+                    container.parentNode.removeChild(container);
+                }
+                if (btn) {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }
+            }
+
+            // 1. Report Header
             const header = document.createElement("div");
             header.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1e40af; padding-bottom: 12px; margin-bottom: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2.5px solid #0F3B6C; padding-bottom: 12px; margin-bottom: 14px;">
                     <div>
-                        <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: #1e3a8a;">Procurement Dashboard Report</h2>
-                        <span style="font-size: 12px; color: #64748b;">HoseXperts Procurement Analytics &bull; OperationsDB</span>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                            <span style="font-size: 20px; font-weight: 800; color: #0A2540; letter-spacing: -0.02em;">HoseXperts</span>
+                            <span style="font-size: 13px; font-weight: 600; color: #0284C7; background: #E0F2FE; padding: 2px 8px; border-radius: 4px;">Procurement Analytics</span>
+                        </div>
+                        <span style="font-size: 11px; color: #64748B;">Executive Procurement Report &bull; Database: OperationsDB</span>
                     </div>
-                    <div style="text-align: right; font-size: 12px;">
-                        <div style="font-weight: 600; color: #1e293b;">${AppState.granularity || 'Monthly'} &bull; ${AppState.measure || 'Spend'} &bull; ${AppState.dateBasis || 'Posting Date'}</div>
-                        <div style="color: #64748b;">${DOM.dataAsOfText ? DOM.dataAsOfText.textContent : 'Data as of Latest'}</div>
+                    <div style="text-align: right; font-size: 11px;">
+                        <div style="font-weight: 700; color: #0A2540; font-size: 12px;">${AppState.granularity || 'Yearly'} &bull; ${AppState.measure || 'Spend'} &bull; ${AppState.dateBasis || 'Posting Date'}</div>
+                        <div style="color: #64748B; margin-top: 2px;">${DOM.dataAsOfText ? DOM.dataAsOfText.textContent : 'Data as of Latest'}</div>
                     </div>
                 </div>
             `;
-            container.appendChild(header);
 
-            // KPI strip
+            // 2. Active Filter Summary Strip
+            const filterSummaryDiv = document.createElement("div");
+            const activeChips = [];
+            if (AppState.filters.financialYear && AppState.filters.financialYear.length) {
+                activeChips.push(`<strong>FY:</strong> ${AppState.filters.financialYear.join(", ")}`);
+            }
+            if (AppState.filters.year && AppState.filters.year.length) {
+                activeChips.push(`<strong>Year:</strong> ${AppState.filters.year.join(", ")}`);
+            }
+            if (AppState.filters.month && AppState.filters.month.length) {
+                activeChips.push(`<strong>Month:</strong> ${AppState.filters.month.join(", ")}`);
+            }
+            if (AppState.filters.fromDate || AppState.filters.toDate) {
+                activeChips.push(`<strong>Date:</strong> ${AppState.filters.fromDate || 'Start'} to ${AppState.filters.toDate || 'End'}`);
+            }
+            for (const [k, v] of Object.entries(AppState.filters)) {
+                if (["fromDate", "toDate", "financialYear", "year", "month", "week", "day", "itemAttributes"].includes(k)) continue;
+                if (Array.isArray(v) && v.length) {
+                    const label = (MultiSelectManager.instances && MultiSelectManager.instances[k]) ? MultiSelectManager.instances[k].label : k;
+                    activeChips.push(`<strong>${label}:</strong> ${v.slice(0, 3).join(", ")}${v.length > 3 ? ` (+${v.length - 3})` : ''}`);
+                }
+            }
+
+            if (activeChips.length > 0) {
+                filterSummaryDiv.innerHTML = `
+                    <div style="background: #F0F6FC; border: 1px solid #BFDBFE; border-left: 4px solid #0284C7; border-radius: 6px; padding: 6px 12px; margin-bottom: 14px; font-size: 11px; color: #0F3B6C; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-weight: 700; text-transform: uppercase; font-size: 10px; color: #0284C7; letter-spacing: 0.04em;">Active Filters:</span>
+                        <span>${activeChips.join(" &nbsp;&bull;&nbsp; ")}</span>
+                    </div>
+                `;
+            } else {
+                filterSummaryDiv.innerHTML = `
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px 12px; margin-bottom: 14px; font-size: 11px; color: #64748B;">
+                        <span style="font-weight: 600;">Active Filters:</span> None (Full Dataset &bull; All records included)
+                    </div>
+                `;
+            }
+
+            // 3. KPI Strip
             const spendVal = DOM.kpiFilteredSpend ? DOM.kpiFilteredSpend.textContent : "₹0";
             const rowsVal = DOM.kpiFilteredRows ? DOM.kpiFilteredRows.textContent : "0";
-            const granText = `${AppState.granularity || 'Monthly'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}`;
+            const granText = `${AppState.granularity || 'Yearly'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}`;
             const kpiRow = document.createElement("div");
             kpiRow.innerHTML = `
-                <div style="display: flex; gap: 14px; margin-bottom: 20px;">
-                    <div style="flex: 1; padding: 12px 16px; border: 1px solid #e2e8f0; border-left: 4px solid #16a34a; border-radius: 6px; background: #ffffff;">
-                        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Filtered Spend</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #16a34a; margin-top: 3px;">${spendVal}</div>
+                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                    <div style="flex: 1; padding: 10px 14px; border: 1px solid #E2E8F0; border-left: 4px solid #0F3B6C; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(10,37,64,0.04);">
+                        <div style="font-size: 10.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em;">Filtered ${AppState.measure || 'Spend'}</div>
+                        <div style="font-size: 19px; font-weight: 800; color: #0A2540; margin-top: 2px;">${spendVal}</div>
                     </div>
-                    <div style="flex: 1; padding: 12px 16px; border: 1px solid #e2e8f0; border-left: 4px solid #0284c7; border-radius: 6px; background: #ffffff;">
-                        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Filtered Rows</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #0284c7; margin-top: 3px;">${rowsVal}</div>
+                    <div style="flex: 1; padding: 10px 14px; border: 1px solid #E2E8F0; border-left: 4px solid #0284C7; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(10,37,64,0.04);">
+                        <div style="font-size: 10.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em;">Filtered Rows</div>
+                        <div style="font-size: 19px; font-weight: 800; color: #0284C7; margin-top: 2px;">${rowsVal}</div>
                     </div>
-                    <div style="flex: 1.2; padding: 12px 16px; border: 1px solid #e2e8f0; border-left: 4px solid #475569; border-radius: 6px; background: #ffffff;">
-                        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active Granularity</div>
-                        <div style="font-size: 14px; font-weight: 600; color: #1e293b; margin-top: 4px;">${granText}</div>
+                    <div style="flex: 1.2; padding: 10px 14px; border: 1px solid #E2E8F0; border-left: 4px solid #0D9488; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(10,37,64,0.04);">
+                        <div style="font-size: 10.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em;">Granularity Selection</div>
+                        <div style="font-size: 14px; font-weight: 700; color: #0D9488; margin-top: 5px;">${granText}</div>
                     </div>
                 </div>
             `;
-            container.appendChild(kpiRow);
 
-            // Chart Canvas to Image helper
-            function chartToElement(canvasId, titleText) {
+            // Chart to Image Element Helper with Executive Sapphire Styling
+            function chartToElement(canvasId, titleText, subtitleText, maxHeightPx = 250) {
                 const canvas = document.getElementById(canvasId);
                 if (!canvas) return null;
                 const wrap = document.createElement("div");
-                wrap.style.border = "1px solid #e2e8f0";
-                wrap.style.borderRadius = "6px";
-                wrap.style.marginBottom = "14px";
-                wrap.style.background = "#ffffff";
+                wrap.style.border = "1px solid #E2E8F0";
+                wrap.style.borderRadius = "8px";
+                wrap.style.background = "#FFFFFF";
+                wrap.style.overflow = "hidden";
+                wrap.style.boxShadow = "0 1px 2px rgba(10,37,64,0.04)";
                 wrap.style.pageBreakInside = "avoid";
                 wrap.style.breakInside = "avoid";
 
-                const title = document.createElement("div");
-                title.style.padding = "6px 12px";
-                title.style.background = "#f8fafc";
-                title.style.borderBottom = "1px solid #e2e8f0";
-                title.style.fontSize = "12px";
-                title.style.fontWeight = "700";
-                title.style.color = "#0f172a";
-                title.textContent = titleText;
-                wrap.appendChild(title);
+                const titleDiv = document.createElement("div");
+                titleDiv.style.padding = "7px 12px";
+                titleDiv.style.background = "linear-gradient(135deg, #F0F6FC 0%, #E6F0FA 100%)";
+                titleDiv.style.borderBottom = "1.5px solid #DCE6F1";
+                titleDiv.style.borderLeft = "4px solid #0F3B6C";
+
+                const titleH = document.createElement("div");
+                titleH.style.fontSize = "12px";
+                titleH.style.fontWeight = "700";
+                titleH.style.color = "#0A2540";
+                titleH.style.letterSpacing = "-0.01em";
+                titleH.textContent = titleText;
+                titleDiv.appendChild(titleH);
+
+                if (subtitleText) {
+                    const sub = document.createElement("div");
+                    sub.style.fontSize = "10px";
+                    sub.style.fontWeight = "500";
+                    sub.style.color = "#475569";
+                    sub.style.marginTop = "1px";
+                    sub.textContent = subtitleText;
+                    titleDiv.appendChild(sub);
+                }
+                wrap.appendChild(titleDiv);
 
                 try {
                     const img = document.createElement("img");
                     img.src = canvas.toDataURL("image/png");
                     img.style.width = "100%";
+                    img.style.maxHeight = `${maxHeightPx}px`;
+                    img.style.objectFit = "contain";
                     img.style.display = "block";
                     img.style.padding = "6px";
+                    img.style.backgroundColor = "#FFFFFF";
                     wrap.appendChild(img);
                 } catch (e) {
                     console.warn("Could not export canvas to image:", canvasId, e);
@@ -2563,60 +2639,172 @@
                 return wrap;
             }
 
-            // Main Period Bar Chart
+            function makeSectionHeader(text, countBadge) {
+                const s = document.createElement("div");
+                s.style.display = "flex";
+                s.style.justifyContent = "space-between";
+                s.style.alignItems = "center";
+                s.style.padding = "6px 12px";
+                s.style.marginBottom = "10px";
+                s.style.borderRadius = "6px";
+                s.style.background = "linear-gradient(135deg, #F0F6FC 0%, #E6F0FA 100%)";
+                s.style.border = "1px solid #DCE6F1";
+                s.style.borderLeft = "4px solid #0F3B6C";
+                s.innerHTML = `
+                    <div style="font-size: 13px; font-weight: 700; color: #0A2540;">
+                        ${text} <span style="font-size: 10px; font-weight: 700; background: #FFFFFF; color: #0F3B6C; border: 1px solid #BFDBFE; padding: 2px 7px; border-radius: 4px; margin-left: 6px;">${countBadge}</span>
+                    </div>
+                    <div style="font-size: 10.5px; color: #475569; font-weight: 500;">Horizontal bars &bull; Ranked largest to smallest</div>
+                `;
+                return s;
+            }
+
+            function makeTwoCardRow(cardA, cardB) {
+                const row = document.createElement("div");
+                row.style.display = "flex";
+                row.style.gap = "12px";
+                row.style.marginBottom = "10px";
+                row.style.pageBreakInside = "avoid";
+                row.style.breakInside = "avoid";
+
+                if (cardA) {
+                    cardA.style.flex = "1";
+                    cardA.style.width = "calc(50% - 6px)";
+                    row.appendChild(cardA);
+                }
+                if (cardB) {
+                    cardB.style.flex = "1";
+                    cardB.style.width = "calc(50% - 6px)";
+                    row.appendChild(cardB);
+                }
+                return row;
+            }
+
+            // ── PAGE 1: Executive Summary & Main Period Chart ──
+            const page1 = document.createElement("div");
+            page1.style.pageBreakInside = "avoid";
+            page1.style.breakInside = "avoid";
+            page1.appendChild(header);
+            page1.appendChild(filterSummaryDiv);
+            page1.appendChild(kpiRow);
+
             const mainTitle = DOM.mainChartTitle ? DOM.mainChartTitle.textContent : "Procurement by Period";
-            const mainChartWrap = chartToElement("mainChartCanvas", mainTitle);
-            if (mainChartWrap) container.appendChild(mainChartWrap);
+            const mainSub = DOM.mainChartSubtitle ? DOM.mainChartSubtitle.textContent : "Posting Date Breakdown";
+            const mainChartWrap = chartToElement("mainChartCanvas", mainTitle, mainSub, 290);
+            if (mainChartWrap) page1.appendChild(mainChartWrap);
+            container.appendChild(page1);
 
-            // 10 Breakdown Bar Charts in 2 columns
-            const grid = document.createElement("div");
-            grid.style.display = "grid";
-            grid.style.gridTemplateColumns = "1fr 1fr";
-            grid.style.gap = "12px";
+            // Page Break 1
+            const pb1 = document.createElement("div");
+            pb1.className = "html2pdf__page-break";
+            pb1.style.pageBreakAfter = "always";
+            container.appendChild(pb1);
 
-            const chartsList = [
-                { id: "chartImportDomestic", title: "1. Import vs Domestic" },
-                { id: "chartReceivingState", title: "2. Receiving State" },
-                { id: "chartItemGroup", title: "3. Item Group" },
-                { id: "chartSubGroup1", title: "4. Sub Group 1" },
-                { id: "chartSubGroup2", title: "5. Sub Group 2" },
-                { id: "chartBrand", title: "6. Brand" },
-                { id: "chartBuyer", title: "7. Buyer" },
-                { id: "chartPurchaseType", title: "8. Credit vs Advance" },
-                { id: "chartTopVendors", title: (DOM.titleTopVendors ? DOM.titleTopVendors.textContent : "9. Top Vendors") },
-                { id: "chartVendorGroup", title: "10. Vendor Group" }
-            ];
+            // ── PAGE 2: Breakdown Analysis (Cards 1 to 4) ──
+            const page2 = document.createElement("div");
+            page2.style.pageBreakInside = "avoid";
+            page2.style.breakInside = "avoid";
+            page2.appendChild(makeSectionHeader("Breakdown Analysis", "Dimensions 1 - 4 of 10"));
+            page2.appendChild(makeTwoCardRow(
+                chartToElement("chartImportDomestic", "1. Import vs Domestic", "Doc Currency"),
+                chartToElement("chartReceivingState", "2. Receiving State", "Ship-To Location")
+            ));
+            page2.appendChild(makeTwoCardRow(
+                chartToElement("chartItemGroup", "3. Item Group", "Top Hierarchy"),
+                chartToElement("chartSubGroup1", "4. Sub Group 1", "Category")
+            ));
+            container.appendChild(page2);
 
-            chartsList.forEach(c => {
-                const el = chartToElement(c.id, c.title);
-                if (el) grid.appendChild(el);
-            });
-            container.appendChild(grid);
+            // Page Break 2
+            const pb2 = document.createElement("div");
+            pb2.className = "html2pdf__page-break";
+            pb2.style.pageBreakAfter = "always";
+            container.appendChild(pb2);
+
+            // ── PAGE 3: Breakdown Analysis (Cards 5 to 8) ──
+            const page3 = document.createElement("div");
+            page3.style.pageBreakInside = "avoid";
+            page3.style.breakInside = "avoid";
+            page3.appendChild(makeSectionHeader("Breakdown Analysis (Continued)", "Dimensions 5 - 8 of 10"));
+            page3.appendChild(makeTwoCardRow(
+                chartToElement("chartSubGroup2", "5. Sub Group 2", "Sub-Category"),
+                chartToElement("chartBrand", "6. Brand", "Manufacturer")
+            ));
+            page3.appendChild(makeTwoCardRow(
+                chartToElement("chartBuyer", "7. Buyer", "Row Buyer"),
+                chartToElement("chartPurchaseType", "8. Credit vs Advance", "Purchase Type")
+            ));
+            container.appendChild(page3);
+
+            // Page Break 3
+            const pb3 = document.createElement("div");
+            pb3.className = "html2pdf__page-break";
+            pb3.style.pageBreakAfter = "always";
+            container.appendChild(pb3);
+
+            // ── PAGE 4: Breakdown Analysis (Cards 9 to 10) & Footer ──
+            const page4 = document.createElement("div");
+            page4.style.pageBreakInside = "avoid";
+            page4.style.breakInside = "avoid";
+            page4.appendChild(makeSectionHeader("Breakdown Analysis (Continued)", "Dimensions 9 - 10 of 10"));
+
+            const topVendorsTitle = (document.getElementById("titleTopVendors") ? document.getElementById("titleTopVendors").textContent : "9. Top Vendors");
+            const topVendorsSub = (document.getElementById("subTitleTopVendors") ? document.getElementById("subTitleTopVendors").textContent : "Ranked by Spend + Others");
+            page4.appendChild(makeTwoCardRow(
+                chartToElement("chartTopVendors", topVendorsTitle, topVendorsSub),
+                chartToElement("chartVendorGroup", "10. Vendor Group", "BP Group")
+            ));
+
+            // Formal Report Footer
+            const footer = document.createElement("div");
+            footer.style.marginTop = "24px";
+            footer.style.paddingTop = "10px";
+            footer.style.borderTop = "1.5px solid #E2E8F0";
+            footer.style.display = "flex";
+            footer.style.justifyContent = "space-between";
+            footer.style.alignItems = "center";
+            footer.style.fontSize = "10.5px";
+            footer.style.color = "#64748B";
+            footer.innerHTML = `
+                <div>HoseXperts Procurement Analytics &bull; Internal Management Report</div>
+                <div>Generated: ${new Date().toLocaleString('en-IN')} &bull; Page 4 of 4</div>
+            `;
+            page4.appendChild(footer);
+            container.appendChild(page4);
 
             const opt = {
                 margin: [8, 8, 8, 8],
-                filename: `Procurement_Dashboard_${AppState.granularity || 'Report'}_${new Date().toISOString().slice(0, 10)}.pdf`,
+                filename: `HoseXperts_Procurement_Report_${AppState.granularity || 'All'}_${AppState.measure || 'Spend'}_${new Date().toISOString().slice(0, 10)}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    scrollY: 0,
+                    scrollX: 0
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'landscape',
+                    compress: true
+                },
+                pagebreak: {
+                    mode: ['css', 'legacy']
+                }
             };
 
             html2pdf().set(opt).from(container).save().then(() => {
-                if (btn) {
-                    btn.innerHTML = originalHtml;
-                    btn.disabled = false;
-                }
+                cleanup();
             }).catch(err => {
                 console.warn("html2pdf save failed, falling back to window.print():", err);
-                if (btn) {
-                    btn.innerHTML = originalHtml;
-                    btn.disabled = false;
-                }
+                cleanup();
                 window.print();
             });
         } else {
             window.print();
         }
+    }
     }
 
     /**
