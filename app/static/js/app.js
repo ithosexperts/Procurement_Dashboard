@@ -69,6 +69,14 @@
 
         // Top Vendors editable limit (Req 14)
         topVendorsLimit: 50,
+        chartLimits: {
+            item_group: 0,
+            sub_group1: 0,
+            sub_group2: 0,
+            brand: 0,
+            buyer: 0,
+            vendor_group: 0
+        },
         latestBreakdowns: null,
         latestMainChart: null,
         currentModalChart: null,
@@ -1656,6 +1664,23 @@
             });
         }
 
+        // Breakdown Chart Entity Limits (10, 20, 30, 40, 50, All)
+        document.addEventListener("change", function (e) {
+            const sel = e.target.closest(".chart-limit-select");
+            if (!sel) return;
+            const key = sel.getAttribute("data-chart-key");
+            const inst = sel.getAttribute("data-inst");
+            const canvasId = sel.getAttribute("data-canvas-id");
+            const val = parseInt(sel.value, 10) || 0;
+
+            if (!AppState.chartLimits) AppState.chartLimits = {};
+            AppState.chartLimits[key] = val;
+
+            if (AppState.latestBreakdowns && AppState.latestBreakdowns[key]) {
+                renderSingleBreakdownChart(key, canvasId, inst, AppState.latestBreakdowns[key]);
+            }
+        });
+
         // Universal Expand / Collapse for Any Breakdown Chart (CH1 - CH10)
         function toggleExpandChart(btn, e) {
             if (e) {
@@ -1759,6 +1784,31 @@
             openUniversalModal("top_vendors", "topVendors", title, subTitle, e);
         }
 
+        // Helper to slice chart data (labels & datasets) to Top N items
+        function sliceChartData(cData, limit) {
+            if (!cData || !cData.labels || !limit || limit <= 0 || cData.labels.length <= limit) {
+                return cData;
+            }
+            const slicedLabels = cData.labels.slice(0, limit);
+            const slicedDatasets = (cData.datasets || []).map(ds => {
+                const newDs = Object.assign({}, ds, {
+                    data: Array.isArray(ds.data) ? ds.data.slice(0, limit) : ds.data
+                });
+                if (Array.isArray(ds.backgroundColor)) {
+                    newDs.backgroundColor = ds.backgroundColor.slice(0, limit);
+                }
+                if (Array.isArray(ds.borderColor)) {
+                    newDs.borderColor = ds.borderColor.slice(0, limit);
+                }
+                return newDs;
+            });
+            return {
+                ...cData,
+                labels: slicedLabels,
+                datasets: slicedDatasets
+            };
+        }
+
         // Render chart inside Universal Modal
         function renderUniversalModalChart() {
             const canvas = document.getElementById("canvasUniversalModalChart");
@@ -1841,8 +1891,11 @@
                     }
                 });
             } else {
-                const cData = AppState.latestBreakdowns ? AppState.latestBreakdowns[chartKey] : null;
-                if (!cData) return;
+                let rawData = AppState.latestBreakdowns ? AppState.latestBreakdowns[chartKey] : null;
+                if (!rawData) return;
+
+                const limit = AppState.chartLimits && AppState.chartLimits[chartKey] ? AppState.chartLimits[chartKey] : 0;
+                const cData = sliceChartData(rawData, limit);
 
                 const numItems = cData.labels ? cData.labels.length : 0;
                 const barHeight = Math.max(340, numItems * 32);
@@ -2862,6 +2915,117 @@
     }
 
     /**
+     * Render a single Horizontal Breakdown Bar Chart with optional limit slicing.
+     */
+    function renderSingleBreakdownChart(key, canvasId, inst, rawChartData) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !rawChartData) return;
+
+        if (ChartInstances[inst]) {
+            ChartInstances[inst].destroy();
+            ChartInstances[inst] = null;
+        }
+
+        // Determine active limit: from select element in DOM or AppState
+        let limit = 0;
+        const sel = document.querySelector(`.chart-limit-select[data-chart-key="${key}"]`);
+        if (sel) {
+            limit = parseInt(sel.value, 10) || 0;
+        } else if (AppState.chartLimits && AppState.chartLimits[key]) {
+            limit = AppState.chartLimits[key];
+        }
+
+        const cData = sliceChartData(rawChartData, limit);
+        const numItems = cData.labels ? cData.labels.length : 0;
+        const barHeight = Math.max(260, numItems * 30);
+
+        // Sizing wrapper ensures Chart.js respects barHeight inside scrollable containers
+        let wrapper = canvas.parentElement;
+        if (!wrapper.classList.contains("chart-canvas-wrapper")) {
+            const parent = canvas.parentNode;
+            wrapper = document.createElement("div");
+            wrapper.className = "chart-canvas-wrapper";
+            wrapper.style.position = "relative";
+            wrapper.style.width = "100%";
+            parent.insertBefore(wrapper, canvas);
+            wrapper.appendChild(canvas);
+        }
+        wrapper.style.height = `${barHeight}px`;
+        canvas.style.height = `${barHeight}px`;
+
+        const ctx = canvas.getContext("2d");
+        ChartInstances[inst] = new Chart(ctx, {
+            type: "bar",
+            data: cData,
+            options: {
+                indexAxis: "y", // Horizontal bars (CH5)
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grace: "12%",
+                        grid: {
+                            color: "#F1F5F9"
+                        },
+                        ticks: {
+                            color: "#64748B",
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
+                            callback: function (val) {
+                                if (AppState.measure === "Spend") {
+                                    return IndianCurrencyFormatter.formatCompact(val);
+                                }
+                                return Number(val).toLocaleString("en-IN");
+                            }
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            autoSkip: false,
+                            color: "#1E293B",
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "500" },
+                            padding: 8
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: AppState.measure === "Quantity"
+                    },
+                    tooltip: {
+                        backgroundColor: "#0A2540",
+                        titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "bold" },
+                        bodyFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+                        cornerRadius: 6,
+                        padding: 10,
+                        callbacks: {
+                            label: function (context) {
+                                const rawVal = context.raw;
+                                if (AppState.measure === "Spend") {
+                                    const compact = IndianCurrencyFormatter.formatCompact(rawVal, 2);
+                                    const exact = IndianCurrencyFormatter.formatExact(rawVal);
+                                    return [
+                                        compact,
+                                        `Exact Value: ${exact}`
+                                    ];
+                                }
+                                const num = Number(rawVal);
+                                const formattedQty = num.toLocaleString("en-IN", {
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 2
+                                });
+                                const label = context.dataset.label || "Quantity";
+                                return `${label}: ${formattedQty}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
      * Render all 10 Horizontal Breakdown Bar Charts (CH3–CH10).
      */
     function renderBreakdownCharts(breakdowns) {
@@ -2881,101 +3045,7 @@
         ];
 
         chartConfigMap.forEach(cfg => {
-            const canvas = document.getElementById(cfg.id);
-            if (!canvas || !breakdowns[cfg.key]) return;
-
-            if (ChartInstances[cfg.inst]) {
-                ChartInstances[cfg.inst].destroy();
-            }
-
-            const cData = breakdowns[cfg.key];
-            const numItems = cData.labels ? cData.labels.length : 0;
-            const barHeight = Math.max(260, numItems * 30);
-
-            // Sizing wrapper ensures Chart.js respects barHeight inside scrollable containers
-            let wrapper = canvas.parentElement;
-            if (!wrapper.classList.contains("chart-canvas-wrapper")) {
-                const parent = canvas.parentNode;
-                wrapper = document.createElement("div");
-                wrapper.className = "chart-canvas-wrapper";
-                wrapper.style.position = "relative";
-                wrapper.style.width = "100%";
-                parent.insertBefore(wrapper, canvas);
-                wrapper.appendChild(canvas);
-            }
-            wrapper.style.height = `${barHeight}px`;
-            canvas.style.height = `${barHeight}px`;
-
-            const ctx = canvas.getContext("2d");
-            ChartInstances[cfg.inst] = new Chart(ctx, {
-                type: "bar",
-                data: cData,
-                options: {
-                    indexAxis: "y", // Horizontal bars (CH5)
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grace: "12%",
-                            grid: {
-                                color: "#F1F5F9"
-                            },
-                            ticks: {
-                                color: "#64748B",
-                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
-                                callback: function (val) {
-                                    if (AppState.measure === "Spend") {
-                                        return IndianCurrencyFormatter.formatCompact(val);
-                                    }
-                                    return Number(val).toLocaleString("en-IN");
-                                }
-                            }
-                        },
-                        y: {
-                            grid: { display: false },
-                            ticks: {
-                                autoSkip: false,
-                                color: "#1E293B",
-                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "500" },
-                                padding: 8
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: AppState.measure === "Quantity"
-                        },
-                        tooltip: {
-                            backgroundColor: "#0A2540",
-                            titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "bold" },
-                            bodyFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
-                            cornerRadius: 6,
-                            padding: 10,
-                            callbacks: {
-                                label: function (context) {
-                                    const rawVal = context.raw;
-                                    if (AppState.measure === "Spend") {
-                                        const compact = IndianCurrencyFormatter.formatCompact(rawVal, 2);
-                                        const exact = IndianCurrencyFormatter.formatExact(rawVal);
-                                        return [
-                                            compact,
-                                            `Exact Value: ${exact}`
-                                        ];
-                                    }
-                                    const num = Number(rawVal);
-                                    const formattedQty = num.toLocaleString("en-IN", {
-                                        minimumFractionDigits: 0,
-                                        maximumFractionDigits: 2
-                                    });
-                                    const label = context.dataset.label || "Quantity";
-                                    return `${label}: ${formattedQty}`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            renderSingleBreakdownChart(cfg.key, cfg.id, cfg.inst, breakdowns[cfg.key]);
         });
     }
 
