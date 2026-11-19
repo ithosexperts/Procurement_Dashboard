@@ -68,14 +68,14 @@
         },
 
         // Top Vendors editable limit (Req 14)
-        topVendorsLimit: 50,
+        topVendorsLimit: 10,
         chartLimits: {
-            item_group: 0,
-            sub_group1: 0,
-            sub_group2: 0,
-            brand: 0,
-            buyer: 0,
-            vendor_group: 0
+            item_group: 10,
+            sub_group1: 10,
+            sub_group2: 10,
+            brand: 10,
+            buyer: 10,
+            vendor_group: 10
         },
         latestBreakdowns: null,
         latestMainChart: null,
