@@ -1784,31 +1784,6 @@
             openUniversalModal("top_vendors", "topVendors", title, subTitle, e);
         }
 
-        // Helper to slice chart data (labels & datasets) to Top N items
-        function sliceChartData(cData, limit) {
-            if (!cData || !cData.labels || !limit || limit <= 0 || cData.labels.length <= limit) {
-                return cData;
-            }
-            const slicedLabels = cData.labels.slice(0, limit);
-            const slicedDatasets = (cData.datasets || []).map(ds => {
-                const newDs = Object.assign({}, ds, {
-                    data: Array.isArray(ds.data) ? ds.data.slice(0, limit) : ds.data
-                });
-                if (Array.isArray(ds.backgroundColor)) {
-                    newDs.backgroundColor = ds.backgroundColor.slice(0, limit);
-                }
-                if (Array.isArray(ds.borderColor)) {
-                    newDs.borderColor = ds.borderColor.slice(0, limit);
-                }
-                return newDs;
-            });
-            return {
-                ...cData,
-                labels: slicedLabels,
-                datasets: slicedDatasets
-            };
-        }
-
         // Render chart inside Universal Modal
         function renderUniversalModalChart() {
             const canvas = document.getElementById("canvasUniversalModalChart");
@@ -2819,6 +2794,33 @@
 
             MultiSelectManager.updateOptions(attrKey, options);
         }
+    }
+
+    /**
+     * Helper to slice chart data (labels & datasets) to Top N items.
+     */
+    function sliceChartData(cData, limit) {
+        if (!cData || !cData.labels || !limit || limit <= 0 || cData.labels.length <= limit) {
+            return cData;
+        }
+        const slicedLabels = cData.labels.slice(0, limit);
+        const slicedDatasets = (cData.datasets || []).map(ds => {
+            const newDs = Object.assign({}, ds, {
+                data: Array.isArray(ds.data) ? ds.data.slice(0, limit) : ds.data
+            });
+            if (Array.isArray(ds.backgroundColor)) {
+                newDs.backgroundColor = ds.backgroundColor.slice(0, limit);
+            }
+            if (Array.isArray(ds.borderColor)) {
+                newDs.borderColor = ds.borderColor.slice(0, limit);
+            }
+            return newDs;
+        });
+        return {
+            ...cData,
+            labels: slicedLabels,
+            datasets: slicedDatasets
+        };
     }
 
     /**
