@@ -190,6 +190,34 @@
     };
 
     /**
+     * Formats data-as-of timestamp into local device/Indian time format:
+     * e.g. 19-11-2026 at 10:46 am
+     */
+    function formatDataAsOf(isoDate, fallbackStr) {
+        if (isoDate) {
+            try {
+                const d = new Date(isoDate);
+                if (!isNaN(d.getTime())) {
+                    const day = String(d.getDate()).padStart(2, "0");
+                    const month = String(d.getMonth() + 1).padStart(2, "0");
+                    const year = d.getFullYear();
+                    let hours = d.getHours();
+                    const minutes = String(d.getMinutes()).padStart(2, "0");
+                    const ampm = hours >= 12 ? "pm" : "am";
+                    hours = hours % 12;
+                    hours = hours ? hours : 12;
+                    const strHours = String(hours).padStart(2, "0");
+                    return `${day}-${month}-${year} at ${strHours}:${minutes} ${ampm}`;
+                }
+            } catch (e) {}
+        }
+        if (fallbackStr && fallbackStr !== "--") {
+            return String(fallbackStr).replace(/^Data as of\s*/i, "");
+        }
+        return "--";
+    }
+
+    /**
      * Chart.js Custom Plugin: Display Values on Bars.
      * Renders clean, readable data values on or beside bars for all breakdown charts and the main period chart.
      */
@@ -2628,6 +2656,12 @@
             const data = await resp.json();
 
             // Update UI components
+            if (DOM.dataAsOfText && (data.data_as_of_iso || data.data_as_of_formatted || data.data_as_of)) {
+                const formatted = formatDataAsOf(data.data_as_of_iso || data.data_as_of, data.data_as_of_formatted || data.data_as_of);
+                if (formatted && formatted !== "--") {
+                    DOM.dataAsOfText.textContent = `Data as of ${formatted}`;
+                }
+            }
             updateKpiStrip(data);
             updateFilterOptions(data.filter_options);
 
@@ -3114,8 +3148,11 @@
                 AppState.dataAsOf = data.data_as_of;
                 AppState.totalRecords = data.record_count || 0;
 
-                if (DOM.dataAsOfText && data.data_as_of_formatted) {
-                    DOM.dataAsOfText.textContent = `Data as of ${data.data_as_of_formatted}`;
+                if (DOM.dataAsOfText) {
+                    const formatted = formatDataAsOf(data.data_as_of_iso || data.data_as_of, data.data_as_of_formatted || data.data_as_of);
+                    if (formatted && formatted !== "--") {
+                        DOM.dataAsOfText.textContent = `Data as of ${formatted}`;
+                    }
                 }
 
                 if (isFlowReady()) {

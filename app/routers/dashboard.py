@@ -66,7 +66,7 @@ async def index(request: Request):
             "record_count": summary["record_count"],
             "total_spend": summary["total_spend"],
             "total_spend_formatted": summary["total_spend_formatted"],
-            "data_as_of": summary["data_as_of_formatted"],
+            "data_as_of": f"Data as of {summary['data_as_of_formatted']}" if (summary.get("data_as_of_formatted") and summary["data_as_of_formatted"] != "--") else "Data as of --",
             "database": summary["database"],
             "sample_records": summary["sample_records"],
             "columns": summary["columns"],

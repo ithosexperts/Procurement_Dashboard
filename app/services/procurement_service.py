@@ -228,8 +228,13 @@ class ProcurementDataStore:
     def data_as_of_formatted(self) -> str:
         if not self._data_as_of:
             return "--"
-        # Format as DD-MMM-YYYY HH:MM (DL4)
-        return self._data_as_of.strftime("%d-%b-%Y %H:%M")
+        dt = self._data_as_of
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        # Indian Standard Time (IST) = UTC + 5:30
+        ist = dt.astimezone(timezone(timedelta(hours=5, minutes=30)))
+        time_str = ist.strftime("%I:%M %p").lower()
+        return f"{ist.strftime('%d-%m-%Y')} at {time_str}"
 
     def start_background_load(self, force_refresh: bool = False) -> None:
         """Initiate background data load without blocking HTTP response."""
@@ -1488,6 +1493,10 @@ def _sync_query_procurement_data(
             "total_spend": 0.0,
             "total_spend_formatted": "₹0.00",
             "data_as_of": data_store.data_as_of_formatted,
+        "data_as_of_formatted": data_store.data_as_of_formatted,
+        "data_as_of_iso": data_store.data_as_of.isoformat() if data_store.data_as_of else "",
+            "data_as_of_formatted": data_store.data_as_of_formatted,
+            "data_as_of_iso": data_store.data_as_of.isoformat() if data_store.data_as_of else "",
             "main_chart": {"labels": [], "datasets": []},
             "breakdown_charts": {},
             "filter_options": filter_options,
@@ -1532,6 +1541,8 @@ def _sync_query_procurement_data(
         "total_spend": filtered_spend,
         "total_spend_formatted": f"₹{filtered_spend:,.2f}",
         "data_as_of": data_store.data_as_of_formatted,
+        "data_as_of_formatted": data_store.data_as_of_formatted,
+        "data_as_of_iso": data_store.data_as_of.isoformat() if data_store.data_as_of else "",
         "main_chart": main_chart,
         "breakdown_charts": breakdown_charts,
         "filter_options": filter_options,
@@ -1566,6 +1577,10 @@ async def query_procurement_data(
             "record_count": 0,
             "total_spend": 0.0,
             "data_as_of": data_store.data_as_of_formatted,
+        "data_as_of_formatted": data_store.data_as_of_formatted,
+        "data_as_of_iso": data_store.data_as_of.isoformat() if data_store.data_as_of else "",
+            "data_as_of_formatted": data_store.data_as_of_formatted,
+            "data_as_of_iso": data_store.data_as_of.isoformat() if data_store.data_as_of else "",
             "main_chart": {"labels": [], "datasets": []},
             "breakdown_charts": {},
             "filter_options": {},
