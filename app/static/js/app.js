@@ -1500,6 +1500,7 @@
                     AppState.measure = this.value;
                     ChartDrillDown.updateTitleAndSubtitle();
                     updateGatingVisibility();
+                    updateTopVendorsSubtitle();
                 }
             });
         });
@@ -1649,17 +1650,22 @@
             }
         });
 
+        function updateTopVendorsSubtitle() {
+            if (!DOM.subTitleTopVendors) return;
+            const val = AppState.topVendorsLimit !== undefined ? AppState.topVendorsLimit : 10;
+            const mText = AppState.measure === "Quantity" ? "Quantity" : "Spend";
+            DOM.subTitleTopVendors.textContent = val === 0 ? `Ranked by ${mText}` : `Ranked by ${mText} + Others`;
+        }
+
         // Editable Selection for Number of Top Vendors (Req 14)
         if (DOM.selectTopVendorsLimit) {
             DOM.selectTopVendorsLimit.addEventListener("change", function () {
                 const val = parseInt(this.value, 10);
-                AppState.topVendorsLimit = isNaN(val) ? 50 : val;
+                AppState.topVendorsLimit = isNaN(val) ? 10 : val;
                 if (DOM.titleTopVendors) {
                     DOM.titleTopVendors.textContent = val === 0 ? "9. All Vendors" : `9. Top ${val} Vendors`;
                 }
-                if (DOM.subTitleTopVendors) {
-                    DOM.subTitleTopVendors.textContent = val === 0 ? "Ranked by Spend" : "Ranked by Spend + Others";
-                }
+                updateTopVendorsSubtitle();
                 executeQuery();
             });
         }

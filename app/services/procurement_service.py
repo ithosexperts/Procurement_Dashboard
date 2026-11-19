@@ -1102,13 +1102,16 @@ def _compute_top_vendors_chart(
     measure: str,
     limit: int = 50,
 ) -> dict[str, Any]:
-    """Compute Top N Vendors ranked by Spend, with Others (CH8)."""
+    """Compute Top N Vendors ranked by Spend or Quantity, with Others (CH8)."""
     if VENDOR_COL not in df.columns or df.empty:
         return {"labels": [], "datasets": []}
 
-    # Vendors are ALWAYS ranked by Spend (CH8)
-    vendor_spend = df.groupby(VENDOR_COL, observed=False)[SPEND_COL].sum().sort_values(ascending=False)
-    all_vendors = vendor_spend.index.tolist()
+    # Vendors ranked by Quantity when measure == "Quantity", else by Spend
+    if measure == "Quantity" and QTY_COL in df.columns:
+        vendor_ranking = df.groupby(VENDOR_COL, observed=False)[QTY_COL].sum().sort_values(ascending=False)
+    else:
+        vendor_ranking = df.groupby(VENDOR_COL, observed=False)[SPEND_COL].sum().sort_values(ascending=False)
+    all_vendors = vendor_ranking.index.tolist()
 
     if limit and limit > 0:
         top_vendors = all_vendors[:limit]
@@ -1119,10 +1122,10 @@ def _compute_top_vendors_chart(
 
     if measure == "Spend":
         labels = [str(v) for v in top_vendors]
-        data = [round(float(vendor_spend[v]), 2) for v in top_vendors]
+        data = [round(float(vendor_ranking[v]), 2) for v in top_vendors]
 
         if others_vendors:
-            others_spend = round(float(vendor_spend[others_vendors].sum()), 2)
+            others_spend = round(float(vendor_ranking[others_vendors].sum()), 2)
             labels.append(f"Others ({len(others_vendors)} vendors)")
             data.append(others_spend)
 
