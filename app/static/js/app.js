@@ -481,23 +481,9 @@
     function updatePeriodFilterVisibility() {
         const gran = AppState.granularity;
 
-        // Date Range is visible ONLY for Daily
+        // Date Range (Calendar) is always visible
         if (DOM.filterGroupDateRange) {
-            const showDateRange = gran === "Daily";
-            DOM.filterGroupDateRange.style.display = showDateRange ? "" : "none";
-
-            // Remove date constraints when switching away from Daily
-            if (!showDateRange) {
-                AppState.filters.fromDate = null;
-                AppState.filters.toDate = null;
-
-                if (DOM.filterFromDate) {
-                    DOM.filterFromDate.value = "";
-                }
-                if (DOM.filterToDate) {
-                    DOM.filterToDate.value = "";
-                }
-            }
+            DOM.filterGroupDateRange.style.display = "block";
         }
 
         if (!DOM.filterGroupYear) return;
