@@ -283,7 +283,7 @@
                 chart.canvas.id === "mainChartCanvas" ||
                 (chart.canvas.id === "canvasUniversalModalChart" && AppState.currentModalChart && AppState.currentModalChart.chartKey === "main_chart")
             );
-            if (isMainChart && AppState.granularity !== "Yearly") {
+            if (isMainChart && AppState.granularity !== "Yearly" && AppState.granularity !== "Financial Year") {
                 return;
             }
 
@@ -1904,7 +1904,7 @@
                         },
                         plugins: {
                             legend: { display: AppState.measure === "Quantity" },
-                            barValueLabels: { display: AppState.granularity === "Yearly" },
+                            barValueLabels: { display: AppState.granularity === "Yearly" || AppState.granularity === "Financial Year" },
                             tooltip: {
                                 backgroundColor: "#0A2540",
                                 titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13, weight: "bold" },
@@ -1986,7 +1986,7 @@
                         },
                         plugins: {
                             legend: { display: AppState.measure === "Quantity" },
-                            barValueLabels: { display: AppState.granularity === "Yearly" },
+                            barValueLabels: { display: AppState.granularity === "Yearly" || AppState.granularity === "Financial Year" },
                             tooltip: {
                                 backgroundColor: "#0A2540",
                                 titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13, weight: "bold" },
@@ -3234,7 +3234,7 @@
                         display: AppState.measure === "Quantity"
                     },
                     barValueLabels: {
-                        display: AppState.granularity === "Yearly"
+                        display: AppState.granularity === "Yearly" || AppState.granularity === "Financial Year"
                     },
                     tooltip: {
                         backgroundColor: "#0A2540",

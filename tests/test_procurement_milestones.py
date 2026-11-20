@@ -223,8 +223,8 @@ async def test_financial_year_filter_date_basis(sample_procurement_df):
 
 
 @pytest.mark.asyncio
-async def test_financial_year_granularity(sample_procurement_df):
-    """Verify Financial Year granularity groups by Posting FY vs Vendor Doc FY."""
+async def test_financial_year_granularity(sample_procurement_df, monkeypatch):
+    """Verify Financial Year granularity groups by Posting FY vs Vendor Doc FY, including categorical columns."""
     res_fy_post = await query_procurement_data(granularity="Financial Year", date_basis="Posting Date")
     assert "main_chart" in res_fy_post
     assert "2026-27" in res_fy_post["main_chart"]["labels"]
@@ -233,6 +233,19 @@ async def test_financial_year_granularity(sample_procurement_df):
     res_fy_vdoc = await query_procurement_data(granularity="Financial Year", date_basis="Vendor's Doc Date")
     assert "main_chart" in res_fy_vdoc
     assert "2026-27" in res_fy_vdoc["main_chart"]["labels"]
+
+    # Explicitly test with DB categorical columns matching SQL Server VD_Procurement_Dashboard view
+    db_df = sample_procurement_df.copy()
+    db_df["Posting FY"] = pd.Series(["2023-24"] * 20 + ["2024-25"] * 30 + ["2025-26"] * 10, dtype="category")
+    db_df["Vendor Doc FY"] = pd.Series(["2023-24"] * 15 + ["2024-25"] * 35 + ["2025-26"] * 10, dtype="category")
+    store = ProcurementDataStore.get_instance()
+    monkeypatch.setattr(store, "_df", db_df)
+
+    res_db_post = await query_procurement_data(granularity="Financial Year", date_basis="Posting Date")
+    assert res_db_post["main_chart"]["labels"] == ["2023-24", "2024-25", "2025-26"]
+
+    res_db_vdoc = await query_procurement_data(granularity="Financial Year", date_basis="Vendor's Doc Date")
+    assert res_db_vdoc["main_chart"]["labels"] == ["2023-24", "2024-25", "2025-26"]
 
 
 # ── Test A9: Quantity by UoM analysis (DS4, CH2) ──────────────────────────────

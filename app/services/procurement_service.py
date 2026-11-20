@@ -92,12 +92,13 @@ VENDOR_DOC_FY_COL = "Vendor Doc FY"
 
 
 def _find_column(df: pd.DataFrame, col_name: str) -> str | None:
-    """Find a column in DataFrame by exact or case-insensitive match."""
+    """Find a column in DataFrame by exact or case-insensitive match (handling spaces/underscores)."""
     if col_name in df.columns:
         return col_name
-    target = col_name.strip().lower()
+    target = col_name.strip().lower().replace("_", " ")
     for c in df.columns:
-        if str(c).strip().lower() == target:
+        clean_c = str(c).strip().lower().replace("_", " ")
+        if clean_c == target:
             return c
     return None
 
@@ -585,41 +586,46 @@ def _precompute_dataframe_columns(df: pd.DataFrame) -> None:
 
     if POSTING_FY_COL not in df.columns:
         if "Posting Year" in df.columns and "Posting Month" in df.columns:
-            y = df["Posting Year"]
-            m = df["Posting Month"]
+            y = pd.to_numeric(df["Posting Year"], errors="coerce").fillna(0).astype("int32")
+            m = pd.to_numeric(df["Posting Month"], errors="coerce").fillna(0).astype("int32")
             next_y_short = (y + 1).astype(str).str[-2:]
             curr_y_short = y.astype(str).str[-2:]
             prev_y = (y - 1).astype(str)
             df[POSTING_FY_COL] = np.where(
-                m >= 4,
-                y.astype(str) + "-" + next_y_short,
-                prev_y + "-" + curr_y_short
+                (y > 0) & (m > 0),
+                np.where(m >= 4, y.astype(str) + "-" + next_y_short, prev_y + "-" + curr_y_short),
+                "(Blank)"
             )
         else:
             df[POSTING_FY_COL] = "(Blank)"
-    elif not isinstance(df[POSTING_FY_COL].dtype, pd.CategoricalDtype):
-        df[POSTING_FY_COL] = df[POSTING_FY_COL].fillna("(Blank)").astype(str).replace(
-            {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
-        )
 
     if VENDOR_DOC_FY_COL not in df.columns:
         if "Vendor Doc Year" in df.columns and "Vendor Doc Month" in df.columns:
-            y = df["Vendor Doc Year"]
-            m = df["Vendor Doc Month"]
+            y = pd.to_numeric(df["Vendor Doc Year"], errors="coerce").fillna(0).astype("int32")
+            m = pd.to_numeric(df["Vendor Doc Month"], errors="coerce").fillna(0).astype("int32")
             next_y_short = (y + 1).astype(str).str[-2:]
             curr_y_short = y.astype(str).str[-2:]
             prev_y = (y - 1).astype(str)
             df[VENDOR_DOC_FY_COL] = np.where(
-                m >= 4,
-                y.astype(str) + "-" + next_y_short,
-                prev_y + "-" + curr_y_short
+                (y > 0) & (m > 0),
+                np.where(m >= 4, y.astype(str) + "-" + next_y_short, prev_y + "-" + curr_y_short),
+                "(Blank)"
             )
         else:
             df[VENDOR_DOC_FY_COL] = "(Blank)"
-    elif not isinstance(df[VENDOR_DOC_FY_COL].dtype, pd.CategoricalDtype):
-        df[VENDOR_DOC_FY_COL] = df[VENDOR_DOC_FY_COL].fillna("(Blank)").astype(str).replace(
-            {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
-        )
+
+    # Pre-compute FY Label and Sort for both date bases on master DataFrame (safe with categorical dtype)
+    p_fy = df[POSTING_FY_COL].astype(str).replace(
+        {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
+    )
+    df["Posting_FY_Label"] = p_fy
+    df["Posting_FY_Sort"] = np.where(p_fy.isin(["(Blank)", "Blank", "None", "", "nan"]), "9999-99", p_fy)
+
+    v_fy = df[VENDOR_DOC_FY_COL].astype(str).replace(
+        {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
+    )
+    df["Vendor_Doc_FY_Label"] = v_fy
+    df["Vendor_Doc_FY_Sort"] = np.where(v_fy.isin(["(Blank)", "Blank", "None", "", "nan"]), "9999-99", v_fy)
 
 
 def _apply_filter_condition(
@@ -772,13 +778,17 @@ def _get_period_cols(df: pd.DataFrame, granularity: str, date_basis: str) -> tup
     if granularity in ("Financial Year", "Financial_Year", "FY"):
         label_col = f"{prefix}_FY_Label"
         sort_col = f"{prefix}_FY_Sort"
-        fy_col = POSTING_FY_COL if is_posting else VENDOR_DOC_FY_COL
         if label_col not in df.columns:
+            fy_col = POSTING_FY_COL if is_posting else VENDOR_DOC_FY_COL
             if fy_col in df.columns:
-                df[label_col] = df[fy_col].fillna("(Blank)").astype(str)
+                p_fy = df[fy_col].astype(str).replace(
+                    {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
+                )
+                df[label_col] = p_fy
+                df[sort_col] = np.where(p_fy.isin(["(Blank)", "Blank", "None", "", "nan"]), "9999-99", p_fy)
             else:
                 df[label_col] = "(Blank)"
-            df[sort_col] = df[label_col].apply(lambda s: "9999-99" if s in ("(Blank)", "Blank", "None", "", "nan") else s)
+                df[sort_col] = "9999-99"
         return label_col, sort_col
 
     elif granularity == "Yearly":
