@@ -492,6 +492,12 @@
         itemAttributesContainer: document.getElementById("itemAttributesContainer"),
 
         // Detail Table
+        detailTableCard: document.getElementById("detailTableCard"),
+        detailTableHeader: document.getElementById("detailTableHeader"),
+        collapseDetailTable: document.getElementById("collapseDetailTable"),
+        btnToggleDetailTable: document.getElementById("btnToggleDetailTable"),
+        iconToggleDetailTable: document.getElementById("iconToggleDetailTable"),
+        textToggleDetailTable: document.getElementById("textToggleDetailTable"),
         detailTable: document.getElementById("detailTable"),
         detailTableBody: document.getElementById("detailTableBody"),
         tableRowsCountText: document.getElementById("tableRowsCountText"),
@@ -2465,6 +2471,99 @@
                 });
             });
         }
+
+        // Detail Table Collapse / Expand Controller
+        initDetailTableCollapse();
+    }
+
+    /**
+     * Detail Table Collapse/Expand Controller.
+     * Default state is collapsed; toggling changes icon, button label, and expands/collapses the table.
+     */
+    function updateTableCollapseState(isExpanded) {
+        const iconToggle = document.getElementById("iconToggleDetailTable");
+        const textToggle = document.getElementById("textToggleDetailTable");
+        const btnToggle = document.getElementById("btnToggleDetailTable");
+        const cardEl = document.getElementById("detailTableCard");
+
+        if (iconToggle) {
+            iconToggle.className = isExpanded ? "bi bi-chevron-up" : "bi bi-chevron-down";
+        }
+        if (textToggle) {
+            textToggle.textContent = isExpanded ? "Collapse" : "Expand";
+        }
+        if (btnToggle) {
+            btnToggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+            btnToggle.title = isExpanded ? "Collapse Table" : "Expand Table";
+            if (isExpanded) {
+                btnToggle.classList.add("table-expanded");
+            } else {
+                btnToggle.classList.remove("table-expanded");
+            }
+        }
+        if (cardEl) {
+            if (isExpanded) {
+                cardEl.classList.remove("is-table-collapsed");
+            } else {
+                cardEl.classList.add("is-table-collapsed");
+            }
+        }
+    }
+
+    function toggleDetailTableCollapse() {
+        const collapseEl = document.getElementById("collapseDetailTable");
+        if (!collapseEl) return;
+
+        if (window.bootstrap && window.bootstrap.Collapse) {
+            const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+            bsCollapse.toggle();
+        } else {
+            const isShown = collapseEl.classList.contains("show");
+            if (isShown) {
+                collapseEl.classList.remove("show");
+                updateTableCollapseState(false);
+            } else {
+                collapseEl.classList.add("show");
+                updateTableCollapseState(true);
+            }
+        }
+    }
+
+    function initDetailTableCollapse() {
+        const collapseEl = document.getElementById("collapseDetailTable");
+        const btnToggle = document.getElementById("btnToggleDetailTable");
+        const headerEl = document.getElementById("detailTableHeader");
+
+        if (btnToggle) {
+            btnToggle.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleDetailTableCollapse();
+            });
+        }
+
+        if (headerEl) {
+            headerEl.addEventListener("click", function (e) {
+                // If user clicked inside the button or a badge, avoid double toggle
+                if (e.target.closest("#btnToggleDetailTable")) return;
+                toggleDetailTableCollapse();
+            });
+        }
+
+        if (collapseEl) {
+            collapseEl.addEventListener("show.bs.collapse", function () {
+                updateTableCollapseState(true);
+            });
+            collapseEl.addEventListener("shown.bs.collapse", function () {
+                updateTableCollapseState(true);
+            });
+            collapseEl.addEventListener("hide.bs.collapse", function () {
+                updateTableCollapseState(false);
+            });
+            collapseEl.addEventListener("hidden.bs.collapse", function () {
+                updateTableCollapseState(false);
+            });
+        }
     }
 
     /**
@@ -3729,6 +3828,7 @@
         openModalTopVendors: openModalTopVendors,
         openCurrentModalChartInNewTab: openCurrentModalChartInNewTab,
         openTopVendorsInNewTab: openTopVendorsInNewTab,
+        toggleDetailTable: toggleDetailTableCollapse,
         exportPdf: exportPdf
     };
 

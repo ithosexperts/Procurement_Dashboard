@@ -1060,6 +1060,40 @@ body, .portal-body {
     transition: all 0.2s ease;
 }
 
+.detail-table-card.is-table-collapsed .card-header {
+    border-bottom: none !important;
+}
+
+#btnToggleDetailTable {
+    background: #FFFFFF;
+    color: #0F3B6C;
+    border: 1px solid #BFDBFE;
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(15, 59, 108, 0.05);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#btnToggleDetailTable:hover {
+    background: #0F3B6C;
+    color: #FFFFFF;
+    border-color: #0F3B6C;
+    box-shadow: 0 2px 4px rgba(15, 59, 108, 0.2);
+}
+
+#btnToggleDetailTable:hover #iconToggleDetailTable,
+#btnToggleDetailTable:hover #textToggleDetailTable {
+    color: #FFFFFF !important;
+}
+
+#btnToggleDetailTable.table-expanded {
+    background: #F0F7FF;
+    border-color: #93C5FD;
+}
+
 .detail-table-card:hover .card-header {
     background: linear-gradient(135deg, #EBF3FC 0%, #E0EDF8 100%) !important;
     border-left-color: #0284C7 !important;
