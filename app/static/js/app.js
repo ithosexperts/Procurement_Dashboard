@@ -304,6 +304,7 @@
             if (hasMultipleDatasets) {
                 winnerAtIndex = {};
                 chart.data.datasets.forEach((ds, dsIdx) => {
+                    if (ds._isAverageLine || ds.type === "line") return;
                     const meta = chart.getDatasetMeta(dsIdx);
                     if (!meta || meta.hidden) return;
                     ds.data.forEach((rawVal, idx) => {
@@ -323,6 +324,7 @@
             const MIN_GAP = 14; // px – minimum clearance between labels
 
             chart.data.datasets.forEach((dataset, datasetIndex) => {
+                if (dataset._isAverageLine || dataset.type === "line") return;
                 const meta = chart.getDatasetMeta(datasetIndex);
                 if (!meta || meta.hidden) return;
 
@@ -1960,6 +1962,9 @@
                 if (wrapper) wrapper.style.height = "520px";
                 canvas.style.height = "520px";
 
+                // Inject Dynamic Average Benchmark Line
+                addMainChartAverageLine(cData);
+
                 const ctx = canvas.getContext("2d");
                 ChartInstances.universalModal = new Chart(ctx, {
                     type: "bar",
@@ -1969,19 +1974,28 @@
                         maintainAspectRatio: false,
                         scales: {
                             x: {
-                                grid: { display: false },
+                                grid: {
+                                    display: true,
+                                    color: "#E2E8F0",
+                                    lineWidth: 1,
+                                    drawTicks: true
+                                },
                                 ticks: {
-                                    color: "#64748B",
-                                    font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "500" }
+                                    color: "#475569",
+                                    font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "600" }
                                 }
                             },
                             y: {
                                 beginAtZero: true,
                                 grace: "10%",
-                                grid: { color: "#F1F5F9" },
+                                grid: {
+                                    display: true,
+                                    color: "#CBD5E1",
+                                    lineWidth: 1.2
+                                },
                                 ticks: {
-                                    color: "#64748B",
-                                    font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+                                    color: "#1E293B",
+                                    font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "600" },
                                     callback: function (val) {
                                         if (AppState.measure === "Spend") {
                                             return IndianCurrencyFormatter.formatCompact(val);
@@ -1992,7 +2006,30 @@
                             }
                         },
                         plugins: {
-                            legend: { display: AppState.measure === "Quantity" },
+                            legend: {
+                                display: true,
+                                position: "top",
+                                align: "end",
+                                labels: {
+                                    boxWidth: 16,
+                                    boxHeight: 10,
+                                    font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "600" },
+                                    color: "#334155",
+                                    padding: 12,
+                                    generateLabels: function (chart) {
+                                        const orig = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                                        return orig.map(item => {
+                                            const ds = chart.data.datasets[item.datasetIndex];
+                                            if (ds && ds._isAverageLine) {
+                                                item.lineDash = [6, 4];
+                                                item.strokeStyle = ds.borderColor;
+                                                item.lineWidth = 2.5;
+                                            }
+                                            return item;
+                                        });
+                                    }
+                                }
+                            },
                             barValueLabels: { display: AppState.granularity === "Yearly" || AppState.granularity === "Financial Year" },
                             tooltip: {
                                 backgroundColor: "#0A2540",
@@ -2003,6 +2040,24 @@
                                 callbacks: {
                                     label: function (context) {
                                         const rawVal = context.raw;
+                                        if (context.dataset && context.dataset._isAverageLine) {
+                                            if (AppState.measure === "Spend") {
+                                                return [
+                                                    `★ ${context.dataset.label}`,
+                                                    `Exact Average: ${IndianCurrencyFormatter.formatExact(rawVal)}`
+                                                ];
+                                            }
+                                            const num = Number(rawVal);
+                                            const compactQty = IndianCurrencyFormatter.formatQuantityCompact(rawVal, 2);
+                                            const formattedQty = num.toLocaleString("en-IN", {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 2
+                                            });
+                                            return [
+                                                `★ ${context.dataset.label}`,
+                                                `Exact Average Qty: ${formattedQty}`
+                                            ];
+                                        }
                                         if (AppState.measure === "Spend") {
                                             const compact = IndianCurrencyFormatter.formatCompact(rawVal, 2);
                                             const exact = IndianCurrencyFormatter.formatExact(rawVal);
@@ -3364,6 +3419,112 @@
     }
 
     /**
+     * Compute and inject a dynamic Average Benchmark Line across the main period chart.
+     * Works across all granularities: Yearly, Financial Year, Monthly, Weekly, and Daily.
+     */
+    function addMainChartAverageLine(chartData) {
+        if (!chartData || !chartData.labels || chartData.labels.length === 0 || !chartData.datasets || chartData.datasets.length === 0) {
+            updateMainChartAverageBadge(null);
+            return null;
+        }
+
+        // Always strip any existing average line dataset before re-computing
+        chartData.datasets = chartData.datasets.filter(ds => !ds._isAverageLine);
+
+        const numPoints = chartData.labels.length;
+        let totalVal = 0;
+        let validCount = 0;
+
+        for (let i = 0; i < numPoints; i++) {
+            let barSum = 0;
+            let hasVal = false;
+            chartData.datasets.forEach(ds => {
+                if (ds._isAverageLine) return;
+                const raw = ds.data ? ds.data[i] : 0;
+                const val = Number(raw);
+                if (!isNaN(val)) {
+                    barSum += val;
+                    hasVal = true;
+                }
+            });
+            if (hasVal) {
+                totalVal += barSum;
+                validCount++;
+            }
+        }
+
+        if (validCount === 0) {
+            updateMainChartAverageBadge(null);
+            return null;
+        }
+
+        const avgVal = totalVal / validCount;
+
+        // Granularity-aware period name
+        let periodName = "Period";
+        const dd = AppState.drilldown;
+        if (dd && dd.level === "monthly") {
+            periodName = "Weekly";
+        } else if (dd && dd.level === "weekly") {
+            periodName = "Daily";
+        } else if (AppState.granularity === "Yearly" || AppState.granularity === "Financial Year") {
+            periodName = "Annual";
+        } else if (AppState.granularity === "Monthly") {
+            periodName = "Monthly";
+        } else if (AppState.granularity === "Weekly") {
+            periodName = "Weekly";
+        } else if (AppState.granularity === "Daily") {
+            periodName = "Daily";
+        }
+
+        let formattedAvg = "";
+        if (AppState.measure === "Spend") {
+            formattedAvg = IndianCurrencyFormatter.formatCompact(avgVal, 2);
+        } else {
+            formattedAvg = IndianCurrencyFormatter.formatQuantityCompact(avgVal, 2);
+        }
+
+        const avgLabel = `Avg (${periodName}): ${formattedAvg}`;
+
+        const avgDataset = {
+            _isAverageLine: true,
+            type: "line",
+            label: avgLabel,
+            data: new Array(numPoints).fill(avgVal),
+            borderColor: "#D97706", // Elegant Warm Amber / Gold
+            backgroundColor: "transparent",
+            borderWidth: 2.2,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: "#D97706",
+            pointHoverBorderColor: "#FFFFFF",
+            pointHoverBorderWidth: 2,
+            fill: false,
+            tension: 0,
+            order: -10 // Renders on top of bars
+        };
+
+        chartData.datasets.push(avgDataset);
+
+        updateMainChartAverageBadge({ avgVal, formattedAvg, periodName });
+
+        return { avgVal, formattedAvg, periodName };
+    }
+
+    function updateMainChartAverageBadge(info) {
+        const badge = document.getElementById("mainChartAverageBadge");
+        const text = document.getElementById("mainChartAverageText");
+        if (!badge || !text) return;
+        if (!info) {
+            badge.style.display = "none";
+            return;
+        }
+        text.textContent = `Avg (${info.periodName}): ${info.formattedAvg}`;
+        badge.style.display = "inline-flex";
+    }
+
+    /**
      * Render Main Vertical Bar Chart (CH1, CH2).
      */
     function renderMainChart(chartData) {
@@ -3376,10 +3537,15 @@
 
         if (chartData && chartData.datasets) {
             chartData.datasets.forEach(ds => {
-                ds.hoverBackgroundColor = "#165BAA";
-                ds.hoverBorderColor = "#0F3B6C";
+                if (!ds._isAverageLine) {
+                    ds.hoverBackgroundColor = "#165BAA";
+                    ds.hoverBorderColor = "#0F3B6C";
+                }
             });
         }
+
+        // Inject Dynamic Average Benchmark Line
+        addMainChartAverageLine(chartData);
 
         const ctx = canvas.getContext("2d");
         ChartInstances.main = new Chart(ctx, {
@@ -3393,21 +3559,28 @@
                 },
                 scales: {
                     x: {
-                        grid: { display: false },
+                        grid: {
+                            display: true,
+                            color: "#E2E8F0",
+                            lineWidth: 1,
+                            drawTicks: true
+                        },
                         ticks: {
-                            color: "#64748B",
-                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "500" }
+                            color: "#475569",
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "600" }
                         }
                     },
                     y: {
                         beginAtZero: true,
                         grace: "10%",
                         grid: {
-                            color: "#F1F5F9"
+                            display: true,
+                            color: "#CBD5E1",
+                            lineWidth: 1.2
                         },
                         ticks: {
-                            color: "#64748B",
-                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
+                            color: "#1E293B",
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "600" },
                             callback: function (val) {
                                 if (AppState.measure === "Spend") {
                                     return IndianCurrencyFormatter.formatCompact(val);
@@ -3419,7 +3592,28 @@
                 },
                 plugins: {
                     legend: {
-                        display: AppState.measure === "Quantity"
+                        display: true,
+                        position: "top",
+                        align: "end",
+                        labels: {
+                            boxWidth: 16,
+                            boxHeight: 10,
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "600" },
+                            color: "#334155",
+                            padding: 10,
+                            generateLabels: function (chart) {
+                                const orig = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                                return orig.map(item => {
+                                    const ds = chart.data.datasets[item.datasetIndex];
+                                    if (ds && ds._isAverageLine) {
+                                        item.lineDash = [6, 4];
+                                        item.strokeStyle = ds.borderColor;
+                                        item.lineWidth = 2.5;
+                                    }
+                                    return item;
+                                });
+                            }
+                        }
                     },
                     barValueLabels: {
                         display: AppState.granularity === "Yearly" || AppState.granularity === "Financial Year"
@@ -3433,6 +3627,24 @@
                         callbacks: {
                             label: function (context) {
                                 const rawVal = context.raw;
+                                if (context.dataset && context.dataset._isAverageLine) {
+                                    if (AppState.measure === "Spend") {
+                                        return [
+                                            `★ ${context.dataset.label}`,
+                                            `Exact Average: ${IndianCurrencyFormatter.formatExact(rawVal)}`
+                                        ];
+                                    }
+                                    const num = Number(rawVal);
+                                    const compactQty = IndianCurrencyFormatter.formatQuantityCompact(rawVal, 2);
+                                    const formattedQty = num.toLocaleString("en-IN", {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 2
+                                    });
+                                    return [
+                                        `★ ${context.dataset.label}`,
+                                        `Exact Average Qty: ${formattedQty}`
+                                    ];
+                                }
                                 if (AppState.measure === "Spend") {
                                     const compact = IndianCurrencyFormatter.formatCompact(rawVal, 2);
                                     const exact = IndianCurrencyFormatter.formatExact(rawVal);
@@ -3441,7 +3653,7 @@
                                         `Exact Value: ${exact}`
                                     ];
                                 }
-                                 const num = Number(rawVal);
+                                const num = Number(rawVal);
                                 const compactQty = IndianCurrencyFormatter.formatQuantityCompact(rawVal, 2);
                                 const formattedQty = num.toLocaleString("en-IN", {
                                     minimumFractionDigits: 0,
@@ -3707,6 +3919,7 @@
                 ChartInstances[k] = null;
             }
         }
+        updateMainChartAverageBadge(null);
     }
 
     function clearDetailTable() {
