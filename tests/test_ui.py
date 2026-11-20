@@ -54,6 +54,7 @@ async def test_dashboard_ui_stage1_and_stage2_controls():
     assert 'id="granWeekly"' in html
     assert 'id="granMonthly"' in html
     assert 'id="granYearly"' in html
+    assert 'id="granFinancialYear"' in html
 
     # Stage 1: Measure options
     assert 'id="measSpend"' in html
@@ -108,7 +109,6 @@ async def test_dashboard_ui_all_eight_filter_sections():
     assert 'headingPeriod' in html
     assert 'id="filterFromDate"' in html
     assert 'id="filterToDate"' in html
-    assert 'id="filterFinancialYear"' in html
     assert 'id="filterYear"' in html
     assert 'id="filterMonth"' in html
     assert 'id="filterWeek"' in html

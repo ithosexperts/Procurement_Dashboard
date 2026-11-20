@@ -222,6 +222,19 @@ async def test_financial_year_filter_date_basis(sample_procurement_df):
     assert "2026-27" in fy_vdoc_opts
 
 
+@pytest.mark.asyncio
+async def test_financial_year_granularity(sample_procurement_df):
+    """Verify Financial Year granularity groups by Posting FY vs Vendor Doc FY."""
+    res_fy_post = await query_procurement_data(granularity="Financial Year", date_basis="Posting Date")
+    assert "main_chart" in res_fy_post
+    assert "2026-27" in res_fy_post["main_chart"]["labels"]
+    assert res_fy_post["record_count"] == len(sample_procurement_df)
+
+    res_fy_vdoc = await query_procurement_data(granularity="Financial Year", date_basis="Vendor's Doc Date")
+    assert "main_chart" in res_fy_vdoc
+    assert "2026-27" in res_fy_vdoc["main_chart"]["labels"]
+
+
 # ── Test A9: Quantity by UoM analysis (DS4, CH2) ──────────────────────────────
 @pytest.mark.asyncio
 async def test_a9_quantity_by_uom(sample_procurement_df):

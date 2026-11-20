@@ -478,7 +478,6 @@
         dateBasisRadios: document.querySelectorAll('input[name="dateBasis"]'),
 
         // Period Filter Subgroups (FT2)
-        filterGroupFinancialYear: document.getElementById("filterGroupFinancialYear"),
         filterGroupYear: document.getElementById("filterGroupYear"),
         filterGroupMonth: document.getElementById("filterGroupMonth"),
         filterGroupWeek: document.getElementById("filterGroupWeek"),
@@ -546,18 +545,14 @@
             DOM.filterGroupDateRange.style.display = "block";
         }
 
-        // Financial Year is always visible
-        if (DOM.filterGroupFinancialYear) {
-            DOM.filterGroupFinancialYear.style.display = "block";
-        }
-
         if (!DOM.filterGroupYear) return;
 
+        // Financial Year -> Date Range only (hide Year, Month, Week, Day)
         // Yearly -> Year
         // Monthly -> Year, Month
         // Weekly -> Year, Month, Week
         // Daily -> Year, Month, Week, Day
-        DOM.filterGroupYear.style.display = "block";
+        DOM.filterGroupYear.style.display = (gran === "Yearly" || gran === "Monthly" || gran === "Weekly" || gran === "Daily") ? "block" : "none";
         DOM.filterGroupMonth.style.display = (gran === "Monthly" || gran === "Weekly" || gran === "Daily") ? "block" : "none";
         DOM.filterGroupWeek.style.display = (gran === "Weekly" || gran === "Daily") ? "block" : "none";
         DOM.filterGroupDay.style.display = (gran === "Daily") ? "block" : "none";
@@ -1164,6 +1159,14 @@
             const basis = AppState.dateBasis || "Posting Date";
             const dd = AppState.drilldown;
 
+            if (AppState.granularity === "Financial Year") {
+                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Financial Year) – ${basis}`;
+                if (DOM.mainChartSubtitle) {
+                    DOM.mainChartSubtitle.textContent = `Financial Year (${basis === "Posting Date" ? "Posting FY" : "Vendor Doc FY"}) Aggregation`;
+                }
+                return;
+            }
+
             if (dd.level === "yearly") {
                 DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Yearly) – ${basis}`;
                 if (DOM.mainChartSubtitle) {
@@ -1228,7 +1231,14 @@
                 return li;
             };
 
-            // Level 1: Yearly
+            // Level 1: Financial Year or Yearly
+            if (AppState.granularity === "Financial Year") {
+                ol.appendChild(createItem("Financial Year", "yearly", true));
+                if (DOM.btnChartDrilldownBack) DOM.btnChartDrilldownBack.classList.add("d-none");
+                if (DOM.btnChartDrilldownReset) DOM.btnChartDrilldownReset.classList.add("d-none");
+                return;
+            }
+
             if (dd.level === "yearly") {
                 ol.appendChild(createItem("Yearly", "yearly", true));
                 if (DOM.btnChartDrilldownBack) DOM.btnChartDrilldownBack.classList.add("d-none");
@@ -1388,6 +1398,10 @@
             const meta = (chart.data.meta && chart.data.meta[index]) || {};
             const dd = AppState.drilldown;
 
+            if (AppState.granularity === "Financial Year") {
+                return;
+            }
+
             if (dd.level === "yearly") {
                 // Level 1 -> Level 2 (Yearly to Monthly)
                 const yr = meta.year || clickedLabel;
@@ -1525,7 +1539,7 @@
             radio.addEventListener("change", function () {
                 if (this.checked) {
                     AppState.granularity = this.value;
-                    if (this.value === "Yearly") {
+                    if (this.value === "Yearly" || this.value === "Financial Year") {
                         AppState.drilldown.level = "yearly";
                         AppState.drilldown.year = null;
                         AppState.drilldown.month = null;
@@ -3086,7 +3100,7 @@
         if (!filterOptions) return;
 
         const filterKeys = [
-            "financialYear", "year", "month", "week", "day",
+            "year", "month", "week", "day",
             "document", "documentType", "purchaseType", "docCurrency",
             "bpName", "vendorGroup", "industry", "vendorCity", "vendorState", "vendorCountry",
             "rowBuyer",

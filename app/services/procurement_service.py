@@ -769,7 +769,19 @@ def _get_period_cols(df: pd.DataFrame, granularity: str, date_basis: str) -> tup
     week_col = "Posting Week" if is_posting else "Vendor Doc Week"
     date_col = POSTING_DATE_COL if is_posting else VENDOR_DOC_DATE_COL
 
-    if granularity == "Yearly":
+    if granularity in ("Financial Year", "Financial_Year", "FY"):
+        label_col = f"{prefix}_FY_Label"
+        sort_col = f"{prefix}_FY_Sort"
+        fy_col = POSTING_FY_COL if is_posting else VENDOR_DOC_FY_COL
+        if label_col not in df.columns:
+            if fy_col in df.columns:
+                df[label_col] = df[fy_col].fillna("(Blank)").astype(str)
+            else:
+                df[label_col] = "(Blank)"
+            df[sort_col] = df[label_col].apply(lambda s: "9999-99" if s in ("(Blank)", "Blank", "None", "", "nan") else s)
+        return label_col, sort_col
+
+    elif granularity == "Yearly":
         label_col = f"{prefix}_Year_Label"
         sort_col = f"{prefix}_Year_Sort"
         if label_col not in df.columns and year_col in df.columns:
@@ -1026,7 +1038,7 @@ def _compute_main_chart(
         grouped = df.groupby([sort_col, label_col], observed=False)[SPEND_COL].sum().reset_index()
         grouped = grouped.sort_values(by=sort_col)
         labels = [str(lbl) for lbl in grouped[label_col].tolist()]
-        meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else ""} for lbl in labels]
+        meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else "", "financialYear": lbl if granularity in ("Financial Year", "Financial_Year", "FY") else ""} for lbl in labels]
 
         return {
             "labels": labels,
@@ -1045,7 +1057,7 @@ def _compute_main_chart(
         uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
         periods_df = df[[sort_col, label_col]].drop_duplicates().sort_values(sort_col)
         labels = [str(lbl) for lbl in periods_df[label_col].tolist()]
-        meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else ""} for lbl in labels]
+        meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else "", "financialYear": lbl if granularity in ("Financial Year", "Financial_Year", "FY") else ""} for lbl in labels]
 
         color_palette = [
             "#0f766e", "#2563eb", "#d97706", "#7c3aed",

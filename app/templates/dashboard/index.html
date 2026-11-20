@@ -81,6 +81,9 @@
 
                     <input type="radio" class="btn-check" name="granularity" id="granYearly" value="Yearly" autocomplete="off" checked>
                     <label class="btn btn-outline-primary" for="granYearly">Yearly</label>
+
+                    <input type="radio" class="btn-check" name="granularity" id="granFinancialYear" value="Financial Year" autocomplete="off">
+                    <label class="btn btn-outline-primary" for="granFinancialYear">Financial Year</label>
                 </div>
             </div>
 
@@ -196,11 +199,6 @@
                                             <input type="date" id="filterToDate" class="form-control form-control-sm" title="To Date" onkeydown="return false">
                                         </div>
                                     </div>
-                                </div>
-                                <!-- Financial Year Filter -->
-                                <div class="filter-group mb-2" id="filterGroupFinancialYear" data-key="financialYear" data-label="Financial Year" data-target="filterFinancialYear">
-                                    <label class="filter-group-label" for="filterFinancialYear">Financial Year</label>
-                                    <select id="filterFinancialYear" class="d-none" multiple></select>
                                 </div>
                                 <!-- Year Filter -->
                                 <div class="filter-group mb-2" id="filterGroupYear" data-key="year" data-label="Year" data-target="filterYear">
