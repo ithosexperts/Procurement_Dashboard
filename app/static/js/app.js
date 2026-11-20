@@ -19,10 +19,12 @@
         measure: "Spend",         // "Spend" | "Quantity"
         dateBasis: "Posting Date", // "Posting Date" | "Vendor's Doc Date"
 
-        // Cascading Drill-Down State (Year -> Month -> Week -> Date)
+        // Cascading Drill-Down State (Year/FY -> Month -> Week -> Date)
         drilldown: {
-            level: "yearly", // "yearly" | "monthly" | "weekly" | "daily"
+            level: "yearly", // "yearly" | "financialYear" | "monthly" | "weekly" | "daily"
+            sourceGranularity: "Yearly", // "Yearly" | "Financial Year"
             year: null,
+            financialYear: null,
             month: null,
             monthName: null,
             week: null,
@@ -1159,10 +1161,10 @@
             const basis = AppState.dateBasis || "Posting Date";
             const dd = AppState.drilldown;
 
-            if (AppState.granularity === "Financial Year") {
+            if (AppState.granularity === "Financial Year" || dd.level === "financialYear") {
                 DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Financial Year) – ${basis}`;
                 if (DOM.mainChartSubtitle) {
-                    DOM.mainChartSubtitle.textContent = `Financial Year (${basis === "Posting Date" ? "Posting FY" : "Vendor Doc FY"}) Aggregation`;
+                    DOM.mainChartSubtitle.textContent = "Double-click a bar to drill down (FY → Month → Week → Date)";
                 }
                 return;
             }
@@ -1173,7 +1175,8 @@
                     DOM.mainChartSubtitle.textContent = "Double-click a bar to drill down (Year → Month → Week → Date)";
                 }
             } else if (dd.level === "monthly") {
-                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Monthly) – ${dd.year}`;
+                const subTitlePrefix = dd.sourceGranularity === "Financial Year" && dd.financialYear ? `FY ${dd.financialYear}` : String(dd.year || '');
+                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Monthly) – ${subTitlePrefix}`;
                 if (DOM.mainChartSubtitle) {
                     DOM.mainChartSubtitle.textContent = "Double-click a month to view weekly breakdown";
                 }
@@ -1231,15 +1234,17 @@
                 return li;
             };
 
+            const isFY = (dd.sourceGranularity === "Financial Year" || AppState.granularity === "Financial Year");
+
             // Level 1: Financial Year or Yearly
-            if (AppState.granularity === "Financial Year") {
-                ol.appendChild(createItem("Financial Year", "yearly", true));
+            if (isFY && (dd.level === "financialYear" || (AppState.granularity === "Financial Year" && dd.level !== "monthly" && dd.level !== "weekly" && dd.level !== "daily"))) {
+                ol.appendChild(createItem("Financial Year", "financialYear", true));
                 if (DOM.btnChartDrilldownBack) DOM.btnChartDrilldownBack.classList.add("d-none");
                 if (DOM.btnChartDrilldownReset) DOM.btnChartDrilldownReset.classList.add("d-none");
                 return;
             }
 
-            if (dd.level === "yearly") {
+            if (!isFY && dd.level === "yearly") {
                 ol.appendChild(createItem("Yearly", "yearly", true));
                 if (DOM.btnChartDrilldownBack) DOM.btnChartDrilldownBack.classList.add("d-none");
                 if (DOM.btnChartDrilldownReset) DOM.btnChartDrilldownReset.classList.add("d-none");
@@ -1250,14 +1255,21 @@
             if (DOM.btnChartDrilldownBack) DOM.btnChartDrilldownBack.classList.remove("d-none");
             if (DOM.btnChartDrilldownReset) DOM.btnChartDrilldownReset.classList.remove("d-none");
 
-            ol.appendChild(createItem("Yearly", "yearly", false));
-
-            // Level 2: Year
-            if (dd.level === "monthly") {
-                ol.appendChild(createItem(String(dd.year), "monthly", true));
-                return;
+            if (isFY) {
+                ol.appendChild(createItem("Financial Year", "financialYear", false));
+                if (dd.level === "monthly") {
+                    ol.appendChild(createItem(`FY ${dd.financialYear}`, "monthly", true));
+                    return;
+                }
+                ol.appendChild(createItem(`FY ${dd.financialYear}`, "financialYearMonthly", false, { financialYear: dd.financialYear }));
+            } else {
+                ol.appendChild(createItem("Yearly", "yearly", false));
+                if (dd.level === "monthly") {
+                    ol.appendChild(createItem(String(dd.year), "monthly", true));
+                    return;
+                }
+                ol.appendChild(createItem(String(dd.year), "monthly", false, { year: dd.year }));
             }
-            ol.appendChild(createItem(String(dd.year), "monthly", false, { year: dd.year }));
 
             // Level 3: Month
             const monthLabel = dd.monthName || "Month";
@@ -1289,10 +1301,16 @@
         }
 
         function navigateBreadcrumb(targetLevel, clickData) {
-            if (targetLevel === "yearly") {
+            if (targetLevel === "yearly" || targetLevel === "financialYear") {
                 resetDrillDown();
+            } else if (targetLevel === "financialYearMonthly") {
+                drillToFinancialYearMonthly(clickData.financialYear || AppState.drilldown.financialYear);
             } else if (targetLevel === "monthly") {
-                drillToMonthly(clickData.year || AppState.drilldown.year);
+                if (AppState.drilldown.sourceGranularity === "Financial Year") {
+                    drillToFinancialYearMonthly(clickData.financialYear || AppState.drilldown.financialYear);
+                } else {
+                    drillToMonthly(clickData.year || AppState.drilldown.year);
+                }
             } else if (targetLevel === "weekly") {
                 const yr = clickData.year || AppState.drilldown.year;
                 const mo = clickData.month || AppState.drilldown.month;
@@ -1311,17 +1329,46 @@
             }
         }
 
+        function drillToFinancialYearMonthly(fyVal) {
+            AppState.drilldown.level = "monthly";
+            AppState.drilldown.sourceGranularity = "Financial Year";
+            AppState.drilldown.financialYear = String(fyVal);
+            AppState.drilldown.year = null;
+            AppState.drilldown.month = null;
+            AppState.drilldown.monthName = null;
+            AppState.drilldown.week = null;
+            AppState.drilldown.date = null;
+
+            AppState.filters.financialYear = [String(fyVal)];
+            AppState.filters.year = [];
+            AppState.filters.month = [];
+            AppState.filters.week = [];
+            AppState.filters.day = [];
+            AppState.filters.fromDate = null;
+            AppState.filters.toDate = null;
+
+            AppState.granularity = "Monthly";
+            syncControls();
+            renderBreadcrumbs();
+            updateTitleAndSubtitle();
+            executeQuery();
+        }
+
         function drillToMonthly(yearVal) {
             AppState.drilldown.level = "monthly";
+            AppState.drilldown.sourceGranularity = "Yearly";
+            AppState.drilldown.financialYear = null;
             AppState.drilldown.year = String(yearVal);
             AppState.drilldown.month = null;
             AppState.drilldown.monthName = null;
             AppState.drilldown.week = null;
             AppState.drilldown.date = null;
 
+            AppState.filters.financialYear = [];
             AppState.filters.year = [String(yearVal)];
             AppState.filters.month = [];
             AppState.filters.week = [];
+            AppState.filters.day = [];
             AppState.filters.fromDate = null;
             AppState.filters.toDate = null;
 
@@ -1343,6 +1390,7 @@
             AppState.filters.year = [String(yearVal)];
             AppState.filters.month = [String(monthVal)];
             AppState.filters.week = [];
+            AppState.filters.day = [];
             AppState.filters.fromDate = null;
             AppState.filters.toDate = null;
 
@@ -1364,6 +1412,7 @@
             AppState.filters.year = [String(yearVal)];
             AppState.filters.month = [String(monthVal)];
             AppState.filters.week = [];
+            AppState.filters.day = [];
             AppState.filters.fromDate = weekObj ? weekObj.start_date : null;
             AppState.filters.toDate = weekObj ? weekObj.end_date : null;
 
@@ -1398,7 +1447,11 @@
             const meta = (chart.data.meta && chart.data.meta[index]) || {};
             const dd = AppState.drilldown;
 
-            if (AppState.granularity === "Financial Year") {
+            if (AppState.granularity === "Financial Year" || dd.level === "financialYear") {
+                const fy = meta.financialYear || clickedLabel;
+                if (fy && fy !== "(Blank)") {
+                    drillToFinancialYearMonthly(fy);
+                }
                 return;
             }
 
@@ -1409,7 +1462,8 @@
             } else if (dd.level === "monthly") {
                 // Level 2 -> Level 3 (Monthly to Weekly)
                 const moInfo = meta.month ? { num: meta.month, name: meta.month_name } : parseMonthInfo(clickedLabel);
-                drillToWeekly(dd.year, moInfo.num, moInfo.name);
+                const yr = meta.year || dd.year;
+                drillToWeekly(yr, moInfo.num, moInfo.name);
             } else if (dd.level === "weekly") {
                 // Level 3 -> Level 4 (Weekly to Daily)
                 let weekObj = meta;
@@ -1424,7 +1478,6 @@
             } else if (dd.level === "daily") {
                 // Level 4 -> Terminal Date Selection
                 if (dd.date) {
-                    // Already at deepest level
                     return;
                 }
                 let dateStr = meta.date;
@@ -1442,6 +1495,8 @@
 
         function navigateBack() {
             const dd = AppState.drilldown;
+            const isFY = (dd.sourceGranularity === "Financial Year");
+
             if (dd.level === "daily" && dd.date) {
                 // Step back from exact date to week view
                 drillToDaily(dd.year, dd.month, dd.monthName, dd.week);
@@ -1450,16 +1505,23 @@
                 drillToWeekly(dd.year, dd.month, dd.monthName);
             } else if (dd.level === "weekly") {
                 // Step back from weekly to monthly
-                drillToMonthly(dd.year);
+                if (isFY && dd.financialYear) {
+                    drillToFinancialYearMonthly(dd.financialYear);
+                } else {
+                    drillToMonthly(dd.year);
+                }
             } else if (dd.level === "monthly") {
-                // Step back from monthly to yearly
+                // Step back from monthly to level 1 (FY or Yearly)
                 resetDrillDown();
             }
         }
 
         function resetDrillDown() {
+            const rootGran = (AppState.drilldown && AppState.drilldown.sourceGranularity === "Financial Year") ? "Financial Year" : "Yearly";
             AppState.drilldown = {
-                level: "yearly",
+                level: rootGran === "Financial Year" ? "financialYear" : "yearly",
+                sourceGranularity: rootGran,
+                financialYear: null,
                 year: null,
                 month: null,
                 monthName: null,
@@ -1469,6 +1531,7 @@
             };
 
             // Clear only period drill-down filters (preserve unrelated filters like vendor/buyer!)
+            AppState.filters.financialYear = [];
             AppState.filters.year = [];
             AppState.filters.month = [];
             AppState.filters.week = [];
@@ -1476,7 +1539,7 @@
             AppState.filters.fromDate = null;
             AppState.filters.toDate = null;
 
-            AppState.granularity = "Yearly";
+            AppState.granularity = rootGran;
             syncControls();
             renderBreadcrumbs();
             updateTitleAndSubtitle();
@@ -1539,12 +1602,32 @@
             radio.addEventListener("change", function () {
                 if (this.checked) {
                     AppState.granularity = this.value;
-                    if (this.value === "Yearly" || this.value === "Financial Year") {
-                        AppState.drilldown.level = "yearly";
+                    if (this.value === "Financial Year") {
+                        AppState.drilldown.sourceGranularity = "Financial Year";
+                        AppState.drilldown.level = "financialYear";
+                        AppState.drilldown.financialYear = null;
                         AppState.drilldown.year = null;
                         AppState.drilldown.month = null;
                         AppState.drilldown.week = null;
                         AppState.drilldown.date = null;
+                        AppState.filters.financialYear = [];
+                        AppState.filters.year = [];
+                        AppState.filters.month = [];
+                        AppState.filters.week = [];
+                        AppState.filters.day = [];
+                    } else if (this.value === "Yearly") {
+                        AppState.drilldown.sourceGranularity = "Yearly";
+                        AppState.drilldown.level = "yearly";
+                        AppState.drilldown.financialYear = null;
+                        AppState.drilldown.year = null;
+                        AppState.drilldown.month = null;
+                        AppState.drilldown.week = null;
+                        AppState.drilldown.date = null;
+                        AppState.filters.financialYear = [];
+                        AppState.filters.year = [];
+                        AppState.filters.month = [];
+                        AppState.filters.week = [];
+                        AppState.filters.day = [];
                     }
                     ChartDrillDown.renderBreadcrumbs();
                     ChartDrillDown.updateTitleAndSubtitle();
@@ -2926,6 +3009,8 @@
         AppState.dateBasis = null;
         AppState.drilldown = {
             level: "yearly",
+            sourceGranularity: "Yearly",
+            financialYear: null,
             year: null,
             month: null,
             monthName: null,
@@ -2933,6 +3018,7 @@
             date: null,
             history: []
         };
+        AppState.filters.financialYear = [];
         ChartDrillDown.renderBreadcrumbs();
         ChartDrillDown.updateTitleAndSubtitle();
 
@@ -2983,6 +3069,8 @@
         // Reset Drill-down state
         AppState.drilldown = {
             level: "yearly",
+            sourceGranularity: "Yearly",
+            financialYear: null,
             year: null,
             month: null,
             monthName: null,
@@ -2990,6 +3078,7 @@
             date: null,
             history: []
         };
+        AppState.filters.financialYear = [];
         ChartDrillDown.renderBreadcrumbs();
         ChartDrillDown.updateTitleAndSubtitle();
 

@@ -920,6 +920,74 @@ def _compute_main_chart(
                     })
                 return {"labels": labels, "datasets": datasets, "meta": meta}
 
+        # Check for Financial Year Monthly drill-down (when single FY is drilled or filtered)
+        fy_col = POSTING_FY_COL if is_posting else VENDOR_DOC_FY_COL
+        fy_filters = filters.get("financialYear") or []
+        if not isinstance(fy_filters, list):
+            fy_filters = [fy_filters]
+        valid_fy_filters = [str(f).strip() for f in fy_filters if str(f).strip() and str(f).strip() not in ("(Blank)", "Blank", "All")]
+
+        single_fy = None
+        if len(valid_fy_filters) == 1:
+            single_fy = valid_fy_filters[0]
+        elif fy_col in df.columns and df[fy_col].nunique() == 1:
+            single_fy = str(df[fy_col].iloc[0])
+
+        if single_fy and "-" in single_fy:
+            try:
+                parts = single_fy.split("-")
+                start_y = int(parts[0])
+                end_y_short = int(parts[1])
+                end_y = (start_y // 100) * 100 + end_y_short if end_y_short < 100 else end_y_short
+                fy_months = [(m, start_y) for m in range(4, 13)] + [(m, end_y) for m in range(1, 4)]
+                labels = [f"{MONTH_ABBRS[m-1]}-{y}" for m, y in fy_months]
+                meta = [
+                    {
+                        "month": m,
+                        "month_name": calendar.month_name[m],
+                        "year": y,
+                        "financialYear": single_fy,
+                        "label": f"{MONTH_ABBRS[m-1]}-{y}",
+                    }
+                    for m, y in fy_months
+                ]
+
+                if measure == "Spend":
+                    ym_spend_map = df.groupby([year_col, month_col], observed=False)[SPEND_COL].sum().to_dict()
+                    data = [round(float(ym_spend_map.get((y, m), 0.0)), 2) for m, y in fy_months]
+                    return {
+                        "labels": labels,
+                        "datasets": [{
+                            "label": "Spend (INR)",
+                            "data": data,
+                            "backgroundColor": "#0F3B6C",
+                            "borderColor": "#09264A",
+                            "borderWidth": 1,
+                        }],
+                        "meta": meta,
+                    }
+                else:
+                    uoms = [u for u in df[UOM_COL].unique().tolist() if u is not None and str(u) != ""]
+                    color_palette = [
+                        "#0f766e", "#2563eb", "#d97706", "#7c3aed",
+                        "#dc2626", "#059669", "#4f46e5", "#ea580c",
+                    ]
+                    ym_qty_map = df.groupby([year_col, month_col, UOM_COL], observed=False)[QTY_COL].sum().to_dict()
+                    datasets = []
+                    for idx, uom in enumerate(uoms):
+                        d = [round(float(ym_qty_map.get((y, m, uom), 0.0)), 2) for m, y in fy_months]
+                        color = color_palette[idx % len(color_palette)]
+                        datasets.append({
+                            "label": f"Qty ({uom})",
+                            "data": d,
+                            "backgroundColor": color,
+                            "borderColor": color,
+                            "borderWidth": 1,
+                        })
+                    return {"labels": labels, "datasets": datasets, "meta": meta}
+            except Exception as exc:
+                logger.warning("Error computing monthly chart for FY %s: %s", single_fy, exc)
+
     # 2. Drill-down LEVEL 3: Weekly View (when single month and year are selected/drilled)
     elif granularity == "Weekly":
         single_year = None
