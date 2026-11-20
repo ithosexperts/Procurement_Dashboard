@@ -293,15 +293,15 @@
             if (!chartArea) return;
             const isHorizontal = chart.config.options.indexAxis === "y";
             const measure = (AppState && AppState.measure) ? AppState.measure : "Spend";
-            const totalDatasets = chart.data.datasets.length;
-            const hasMultipleDatasets = totalDatasets > 1;
+            const barDatasets = chart.data.datasets.filter(ds => !ds._isAverageLine && ds.type !== "line");
+            const barDatasetsCount = barDatasets.length;
 
-            // ── When multiple datasets exist (Quantity mode with many UoMs),
-            //    only draw a label for the dataset with the LARGEST value at
-            //    each label-index position.  This prevents 15+ overlapping
-            //    labels from piling on top of each other.
-            let winnerAtIndex = null;           // Map: index -> { dsIdx, val }
-            if (hasMultipleDatasets) {
+            // ── When more than 3 bar datasets exist (e.g. 5–15 UoMs in unfiltered Quantity mode),
+            //    only draw a label for the dataset with the LARGEST value at each position
+            //    to prevent chaotic label collisions. For 1 to 3 datasets (e.g. MM & COIL),
+            //    draw labels for ALL bars so the user can see every selected UoM!
+            let winnerAtIndex = null;
+            if (barDatasetsCount > 3) {
                 winnerAtIndex = {};
                 chart.data.datasets.forEach((ds, dsIdx) => {
                     if (ds._isAverageLine || ds.type === "line") return;
@@ -318,8 +318,7 @@
                 });
             }
 
-            // ── Collision tracking: remember y (horizontal) or x (vertical)
-            //    pixel positions already occupied by a label to avoid overlap.
+            // ── Collision tracking: remember positions already occupied by a label to avoid overlap.
             const usedPositions = [];
             const MIN_GAP = 14; // px – minimum clearance between labels
 
@@ -347,18 +346,24 @@
                         text = IndianCurrencyFormatter.formatQuantityCompact(numVal, 1);
                     }
 
-                    // ── Collision check: skip this label if its primary axis
-                    //    coordinate is too close to an already-drawn label.
-                    const primaryPos = isHorizontal ? element.y : element.x;
+                    // ── Collision check: skip this label if coordinate is too close to an already-drawn label.
                     let collides = false;
                     for (let i = 0; i < usedPositions.length; i++) {
-                        if (Math.abs(usedPositions[i] - primaryPos) < MIN_GAP) {
-                            collides = true;
-                            break;
+                        if (isHorizontal) {
+                            if (Math.abs(usedPositions[i].y - element.y) < MIN_GAP) {
+                                collides = true;
+                                break;
+                            }
+                        } else {
+                            // In vertical bar charts, only consider collision if both x and y are touching
+                            if (Math.abs(usedPositions[i].x - element.x) < 8 && Math.abs(usedPositions[i].y - element.y) < 12) {
+                                collides = true;
+                                break;
+                            }
                         }
                     }
                     if (collides) return;
-                    usedPositions.push(primaryPos);
+                    usedPositions.push({ x: element.x, y: element.y });
 
                     ctx.save();
                     ctx.font = "600 11px 'Plus Jakarta Sans', sans-serif";
@@ -1962,6 +1967,33 @@
                 if (wrapper) wrapper.style.height = "520px";
                 canvas.style.height = "520px";
 
+                const barDatasets = (cData && cData.datasets)
+                    ? cData.datasets.filter(ds => !ds._isAverageLine && ds.type !== "line")
+                    : [];
+                const isDualAxis = (AppState.measure === "Quantity" && barDatasets.length === 2);
+
+                if (cData && cData.datasets) {
+                    cData.datasets.forEach(ds => {
+                        if (!ds._isAverageLine && ds.type !== "line") {
+                            ds.minBarLength = 8;
+                            if (ds.backgroundColor && ds.backgroundColor !== "#0F3B6C") {
+                                ds.hoverBackgroundColor = ds.backgroundColor;
+                                ds.hoverBorderColor = ds.borderColor || ds.backgroundColor;
+                            } else {
+                                ds.hoverBackgroundColor = "#165BAA";
+                                ds.hoverBorderColor = "#0F3B6C";
+                            }
+                        }
+                    });
+                }
+
+                if (isDualAxis) {
+                    barDatasets[0].yAxisID = "y";
+                    barDatasets[1].yAxisID = "y1";
+                } else {
+                    barDatasets.forEach(ds => { ds.yAxisID = "y"; });
+                }
+
                 // Inject Dynamic Average Benchmark Line
                 addMainChartAverageLine(cData);
 
@@ -1986,6 +2018,8 @@
                                 }
                             },
                             y: {
+                                type: "linear",
+                                position: "left",
                                 beginAtZero: true,
                                 grace: "10%",
                                 grid: {
@@ -1993,8 +2027,14 @@
                                     color: "#CBD5E1",
                                     lineWidth: 1.2
                                 },
+                                title: isDualAxis ? {
+                                    display: true,
+                                    text: barDatasets[0].label || "Quantity",
+                                    color: barDatasets[0].backgroundColor || "#0f766e",
+                                    font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "bold" }
+                                } : { display: false },
                                 ticks: {
-                                    color: "#1E293B",
+                                    color: isDualAxis ? (barDatasets[0].backgroundColor || "#0f766e") : "#1E293B",
                                     font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "600" },
                                     callback: function (val) {
                                         if (AppState.measure === "Spend") {
@@ -2003,7 +2043,31 @@
                                         return IndianCurrencyFormatter.formatQuantityCompact(val);
                                     }
                                 }
-                            }
+                            },
+                            ...(isDualAxis ? {
+                                y1: {
+                                    type: "linear",
+                                    position: "right",
+                                    beginAtZero: true,
+                                    grace: "10%",
+                                    grid: {
+                                        drawOnChartArea: false
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: barDatasets[1].label || "Quantity",
+                                        color: barDatasets[1].backgroundColor || "#2563eb",
+                                        font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "bold" }
+                                    },
+                                    ticks: {
+                                        color: barDatasets[1].backgroundColor || "#2563eb",
+                                        font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: "600" },
+                                        callback: function (val) {
+                                            return IndianCurrencyFormatter.formatQuantityCompact(val);
+                                        }
+                                    }
+                                }
+                            } : {})
                         },
                         plugins: {
                             legend: {
@@ -3431,6 +3495,54 @@
         // Always strip any existing average line dataset before re-computing
         chartData.datasets = chartData.datasets.filter(ds => !ds._isAverageLine);
 
+        // Granularity-aware period name
+        let periodName = "Period";
+        const dd = AppState.drilldown;
+        if (dd && dd.level === "monthly") {
+            periodName = "Weekly";
+        } else if (dd && dd.level === "weekly") {
+            periodName = "Daily";
+        } else if (AppState.granularity === "Yearly" || AppState.granularity === "Financial Year") {
+            periodName = "Annual";
+        } else if (AppState.granularity === "Monthly") {
+            periodName = "Monthly";
+        } else if (AppState.granularity === "Weekly") {
+            periodName = "Weekly";
+        } else if (AppState.granularity === "Daily") {
+            periodName = "Daily";
+        }
+
+        const barDatasets = chartData.datasets.filter(ds => !ds._isAverageLine && ds.type !== "line");
+
+        // When Measure is Quantity with multiple distinct UoMs (e.g. MM & COIL),
+        // adding different physical units into a single flat line is mathematically invalid.
+        // Instead, compute each UoM's own average and display in the header summary badge!
+        if (AppState.measure === "Quantity" && barDatasets.length > 1) {
+            const parts = [];
+            barDatasets.forEach(ds => {
+                let sum = 0;
+                let count = 0;
+                if (ds.data) {
+                    ds.data.forEach(v => {
+                        const num = Number(v);
+                        if (!isNaN(num) && num > 0) {
+                            sum += num;
+                            count++;
+                        }
+                    });
+                }
+                const avg = count > 0 ? (sum / count) : 0;
+                const fmt = IndianCurrencyFormatter.formatQuantityCompact(avg, 1);
+                const uomName = (ds.label || "").replace(/^Qty\s*\((.*)\)$/, "$1").trim();
+                parts.push(`${uomName}: ${fmt}`);
+            });
+            updateMainChartAverageBadge({
+                periodName,
+                formattedAvg: parts.join(" | ")
+            });
+            return null;
+        }
+
         const numPoints = chartData.labels.length;
         let totalVal = 0;
         let validCount = 0;
@@ -3459,23 +3571,6 @@
         }
 
         const avgVal = totalVal / validCount;
-
-        // Granularity-aware period name
-        let periodName = "Period";
-        const dd = AppState.drilldown;
-        if (dd && dd.level === "monthly") {
-            periodName = "Weekly";
-        } else if (dd && dd.level === "weekly") {
-            periodName = "Daily";
-        } else if (AppState.granularity === "Yearly" || AppState.granularity === "Financial Year") {
-            periodName = "Annual";
-        } else if (AppState.granularity === "Monthly") {
-            periodName = "Monthly";
-        } else if (AppState.granularity === "Weekly") {
-            periodName = "Weekly";
-        } else if (AppState.granularity === "Daily") {
-            periodName = "Daily";
-        }
 
         let formattedAvg = "";
         if (AppState.measure === "Spend") {
@@ -3535,13 +3630,31 @@
             ChartInstances.main.destroy();
         }
 
+        const barDatasets = (chartData && chartData.datasets)
+            ? chartData.datasets.filter(ds => !ds._isAverageLine && ds.type !== "line")
+            : [];
+        const isDualAxis = (AppState.measure === "Quantity" && barDatasets.length === 2);
+
         if (chartData && chartData.datasets) {
             chartData.datasets.forEach(ds => {
-                if (!ds._isAverageLine) {
-                    ds.hoverBackgroundColor = "#165BAA";
-                    ds.hoverBorderColor = "#0F3B6C";
+                if (!ds._isAverageLine && ds.type !== "line") {
+                    ds.minBarLength = 8;
+                    if (ds.backgroundColor && ds.backgroundColor !== "#0F3B6C") {
+                        ds.hoverBackgroundColor = ds.backgroundColor;
+                        ds.hoverBorderColor = ds.borderColor || ds.backgroundColor;
+                    } else {
+                        ds.hoverBackgroundColor = "#165BAA";
+                        ds.hoverBorderColor = "#0F3B6C";
+                    }
                 }
             });
+        }
+
+        if (isDualAxis) {
+            barDatasets[0].yAxisID = "y";
+            barDatasets[1].yAxisID = "y1";
+        } else {
+            barDatasets.forEach(ds => { ds.yAxisID = "y"; });
         }
 
         // Inject Dynamic Average Benchmark Line
@@ -3571,6 +3684,8 @@
                         }
                     },
                     y: {
+                        type: "linear",
+                        position: "left",
                         beginAtZero: true,
                         grace: "10%",
                         grid: {
@@ -3578,8 +3693,14 @@
                             color: "#CBD5E1",
                             lineWidth: 1.2
                         },
+                        title: isDualAxis ? {
+                            display: true,
+                            text: barDatasets[0].label || "Quantity",
+                            color: barDatasets[0].backgroundColor || "#0f766e",
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "bold" }
+                        } : { display: false },
                         ticks: {
-                            color: "#1E293B",
+                            color: isDualAxis ? (barDatasets[0].backgroundColor || "#0f766e") : "#1E293B",
                             font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "600" },
                             callback: function (val) {
                                 if (AppState.measure === "Spend") {
@@ -3588,7 +3709,31 @@
                                 return IndianCurrencyFormatter.formatQuantityCompact(val);
                             }
                         }
-                    }
+                    },
+                    ...(isDualAxis ? {
+                        y1: {
+                            type: "linear",
+                            position: "right",
+                            beginAtZero: true,
+                            grace: "10%",
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            title: {
+                                display: true,
+                                text: barDatasets[1].label || "Quantity",
+                                color: barDatasets[1].backgroundColor || "#2563eb",
+                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "bold" }
+                            },
+                            ticks: {
+                                color: barDatasets[1].backgroundColor || "#2563eb",
+                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: "600" },
+                                callback: function (val) {
+                                    return IndianCurrencyFormatter.formatQuantityCompact(val);
+                                }
+                            }
+                        }
+                    } : {})
                 },
                 plugins: {
                     legend: {
