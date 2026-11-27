@@ -1727,7 +1727,6 @@
                 radio.addEventListener("change", function () {
                     if (this.checked) {
                         AppState.breakdownAnalysis = this.value;
-                        applyBreakdownAnalysisFilter(this.value, false);
                         ChartDrillDown.updateTitleAndSubtitle();
                         updateKpiSelectionText();
                         executeQuery();
@@ -3330,7 +3329,6 @@
                 radio.checked = (radio.value === "All");
             });
         }
-        applyBreakdownAnalysisFilter("All", false);
 
         updateGatingVisibility();
     }
@@ -4033,11 +4031,6 @@
         chartConfigMap.forEach(cfg => {
             renderSingleBreakdownChart(cfg.key, cfg.id, cfg.inst, breakdowns[cfg.key]);
         });
-
-        // Re-apply active Breakdown Analysis granularity selection (without jarring auto-scroll)
-        if (AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All") {
-            applyBreakdownAnalysisFilter(AppState.breakdownAnalysis, false);
-        }
     }
 
     /**
