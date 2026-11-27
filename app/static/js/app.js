@@ -18,7 +18,7 @@
         granularity: "Yearly",   // "Daily" | "Weekly" | "Monthly" | "Yearly"
         measure: "Spend",         // "Spend" | "Quantity"
         dateBasis: "Posting Date", // "Posting Date" | "Vendor's Doc Date"
-        breakdownAnalysis: "All", // "All" | "Import vs Domestic" | "Receiving State" | "Item Group" | "Sub Group 1" | "Sub Group 2" | "Brand" | "Buyer" | "Credit vs Advance"
+        breakdownAnalysis: "None", // "None" | "Import vs Domestic" | "Receiving State" | "Item Group" | "Sub Group 1" | "Sub Group 2" | "Brand" | "Buyer" | "Credit vs Advance"
 
         // Cascading Drill-Down State (Year/FY -> Month -> Week -> Date)
         drilldown: {
@@ -1600,7 +1600,7 @@
             // Sync Breakdown Analysis Radio
             if (DOM.breakdownAnalysisRadios) {
                 DOM.breakdownAnalysisRadios.forEach(radio => {
-                    radio.checked = (radio.value === (AppState.breakdownAnalysis || "All"));
+                    radio.checked = (radio.value === (AppState.breakdownAnalysis || "None"));
                 });
             }
 
@@ -2851,7 +2851,7 @@
     async function exportPdf() {
         const granElem = document.getElementById("printReportGranularity");
         if (granElem) {
-            const brkStr = (AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All") ? ` • ${AppState.breakdownAnalysis}` : "";
+            const brkStr = (AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All" && AppState.breakdownAnalysis !== "None") ? ` • ${AppState.breakdownAnalysis}` : "";
             granElem.textContent = `${AppState.granularity || 'All'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}${brkStr}`;
         }
         const dateElem = document.getElementById("printReportDate");
@@ -3323,10 +3323,10 @@
             });
         }
 
-        AppState.breakdownAnalysis = "All";
+        AppState.breakdownAnalysis = "None";
         if (DOM.breakdownAnalysisRadios) {
             DOM.breakdownAnalysisRadios.forEach(radio => {
-                radio.checked = (radio.value === "All");
+                radio.checked = (radio.value === "None");
             });
         }
 
@@ -3388,7 +3388,7 @@
             granularity: AppState.granularity,
             measure: AppState.measure,
             date_basis: AppState.dateBasis,
-            breakdown_analysis: AppState.breakdownAnalysis || "All",
+            breakdown_analysis: AppState.breakdownAnalysis || "None",
             filters: AppState.filters,
             page: AppState.tablePage,
             page_size: AppState.tablePageSize,
@@ -4036,7 +4036,7 @@
         const gran = AppState.granularity || "--";
         const meas = AppState.measure || "--";
         const dateB = AppState.dateBasis || "--";
-        const brk = (AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All")
+        const brk = (AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All" && AppState.breakdownAnalysis !== "None")
             ? ` • ${AppState.breakdownAnalysis}`
             : "";
         DOM.kpiActiveSelection.textContent = `${gran} • ${meas} • ${dateB}${brk}`;

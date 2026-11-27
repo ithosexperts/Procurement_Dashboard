@@ -66,7 +66,7 @@ async def test_dashboard_ui_stage1_and_stage2_controls():
 
     # Breakdown Analysis Granularity options
     assert 'id="breakdownAnalysisGroup"' in html
-    assert 'id="breakdownAll"' in html
+    assert 'id="breakdownAll"' not in html
     assert 'id="breakdownNone"' in html
     assert 'id="breakdownImportDomestic"' in html
     assert 'id="breakdownReceivingState"' in html
