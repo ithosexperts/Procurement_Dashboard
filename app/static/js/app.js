@@ -18,6 +18,7 @@
         granularity: "Yearly",   // "Daily" | "Weekly" | "Monthly" | "Yearly"
         measure: "Spend",         // "Spend" | "Quantity"
         dateBasis: "Posting Date", // "Posting Date" | "Vendor's Doc Date"
+        breakdownAnalysis: "All", // "All" | "Import vs Domestic" | "Receiving State" | "Item Group" | "Sub Group 1" | "Sub Group 2" | "Brand" | "Buyer" | "Credit vs Advance"
 
         // Cascading Drill-Down State (Year/FY -> Month -> Week -> Date)
         drilldown: {
@@ -485,6 +486,10 @@
         granularityRadios: document.querySelectorAll('input[name="granularity"]'),
         measureRadios: document.querySelectorAll('input[name="measure"]'),
         dateBasisRadios: document.querySelectorAll('input[name="dateBasis"]'),
+        breakdownAnalysisRadios: document.querySelectorAll('input[name="breakdownAnalysis"]'),
+        breakdownAnalysisContainer: document.getElementById("breakdownAnalysisContainer"),
+        breakdownDimensionsBadge: document.getElementById("breakdownDimensionsBadge"),
+        breakdownResetFilterContainer: document.getElementById("breakdownResetFilterContainer"),
 
         // Period Filter Subgroups (FT2)
         filterGroupYear: document.getElementById("filterGroupYear"),
@@ -1567,6 +1572,13 @@
                 });
             }
 
+            // Sync Breakdown Analysis Radio
+            if (DOM.breakdownAnalysisRadios) {
+                DOM.breakdownAnalysisRadios.forEach(radio => {
+                    radio.checked = (radio.value === (AppState.breakdownAnalysis || "All"));
+                });
+            }
+
             // Sync MultiSelect dropdowns
             MultiSelectManager.setSelected("year", AppState.filters.year);
             MultiSelectManager.refreshUI("year");
@@ -1673,6 +1685,20 @@
                 }
             });
         });
+
+        // Breakdown Analysis Granularity
+        if (DOM.breakdownAnalysisRadios) {
+            DOM.breakdownAnalysisRadios.forEach(radio => {
+                if (radio.checked) AppState.breakdownAnalysis = radio.value;
+                radio.addEventListener("change", function () {
+                    if (this.checked) {
+                        AppState.breakdownAnalysis = this.value;
+                        applyBreakdownAnalysisFilter(this.value, true);
+                        updateKpiSelectionText();
+                    }
+                });
+            });
+        }
 
         // Chart Drill-Down Back & Reset Buttons
         if (DOM.btnChartDrilldownBack) {
@@ -2787,7 +2813,8 @@
     async function exportPdf() {
         const granElem = document.getElementById("printReportGranularity");
         if (granElem) {
-            granElem.textContent = `${AppState.granularity || 'All'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}`;
+            const brkStr = (AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All") ? ` • ${AppState.breakdownAnalysis}` : "";
+            granElem.textContent = `${AppState.granularity || 'All'} • ${AppState.measure || 'Spend'} • ${AppState.dateBasis || 'Posting Date'}${brkStr}`;
         }
         const dateElem = document.getElementById("printReportDate");
         if (dateElem && DOM.dataAsOfText) {
@@ -3258,6 +3285,14 @@
             });
         }
 
+        AppState.breakdownAnalysis = "All";
+        if (DOM.breakdownAnalysisRadios) {
+            DOM.breakdownAnalysisRadios.forEach(radio => {
+                radio.checked = (radio.value === "All");
+            });
+        }
+        applyBreakdownAnalysisFilter("All", false);
+
         updateGatingVisibility();
     }
 
@@ -3389,7 +3424,7 @@
             DOM.kpiFilteredRows.textContent = (data.record_count || 0).toLocaleString("en-IN");
         }
         if (DOM.kpiActiveSelection) {
-            DOM.kpiActiveSelection.textContent = `${AppState.granularity} • ${AppState.measure} • ${AppState.dateBasis}`;
+            updateKpiSelectionText();
         }
         if (DOM.mainChartTitle) {
             ChartDrillDown.updateTitleAndSubtitle();
@@ -3954,6 +3989,140 @@
         chartConfigMap.forEach(cfg => {
             renderSingleBreakdownChart(cfg.key, cfg.id, cfg.inst, breakdowns[cfg.key]);
         });
+
+        // Re-apply active Breakdown Analysis granularity selection (without jarring auto-scroll)
+        if (AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All") {
+            applyBreakdownAnalysisFilter(AppState.breakdownAnalysis, false);
+        }
+    }
+
+    /**
+     * Update active granularity / measure / date basis / breakdown indicator.
+     */
+    function updateKpiSelectionText() {
+        if (!DOM.kpiActiveSelection) return;
+        const gran = AppState.granularity || "--";
+        const meas = AppState.measure || "--";
+        const dateB = AppState.dateBasis || "--";
+        const brk = (AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All")
+            ? ` • ${AppState.breakdownAnalysis}`
+            : "";
+        DOM.kpiActiveSelection.textContent = `${gran} • ${meas} • ${dateB}${brk}`;
+    }
+
+    /**
+     * Filter or focus the Breakdown Analysis section based on selected Breakdown Analysis Granularity.
+     * Options:
+     * 1. Import vs Domestic
+     * 2. Receiving State
+     * 3. Item Group
+     * 4. Sub Group 1
+     * 5. Sub Group 2
+     * 6. Brand
+     * 7. Buyer
+     * 8. Credit vs Advance
+     * or "All" to view all breakdown dimensions.
+     */
+    function applyBreakdownAnalysisFilter(value, shouldScroll = true) {
+        const breakdownMap = {
+            "Import vs Domestic": { colId: "colImportDomestic", inst: "importDomestic" },
+            "Receiving State": { colId: "colReceivingState", inst: "receivingState" },
+            "Item Group": { colId: "colItemGroup", inst: "itemGroup" },
+            "Sub Group 1": { colId: "colSubGroup1", inst: "subGroup1" },
+            "Sub Group 2": { colId: "colSubGroup2", inst: "subGroup2" },
+            "Brand": { colId: "colBrand", inst: "brand" },
+            "Buyer": { colId: "colBuyer", inst: "buyer" },
+            "Credit vs Advance": { colId: "colPurchaseType", inst: "purchaseType" },
+        };
+
+        const allBreakdownCols = document.querySelectorAll(".chart-col-expandable");
+        const badge = document.getElementById("breakdownDimensionsBadge");
+        const resetContainer = document.getElementById("breakdownResetFilterContainer");
+
+        if (!value || value === "All" || !breakdownMap[value]) {
+            // Show all dimensions in grid
+            allBreakdownCols.forEach(col => {
+                col.style.display = "";
+                if (col.classList.contains("breakdown-isolated-col")) {
+                    col.classList.remove("breakdown-isolated-col", "col-12", "breakdown-highlight-card");
+                    col.classList.add("col-md-6");
+                }
+            });
+
+            if (badge) {
+                badge.textContent = "All Dimensions";
+                badge.className = "badge";
+                badge.style.background = "#FFFFFF";
+                badge.style.color = "#0F3B6C";
+                badge.style.borderColor = "#BFDBFE";
+            }
+            if (resetContainer) {
+                resetContainer.innerHTML = "";
+            }
+        } else {
+            // Isolate and focus the selected breakdown dimension
+            const target = breakdownMap[value];
+            let targetEl = null;
+
+            allBreakdownCols.forEach(col => {
+                if (col.id === target.colId) {
+                    col.style.display = "";
+                    col.classList.remove("col-md-6");
+                    col.classList.add("col-12", "breakdown-isolated-col", "breakdown-highlight-card");
+                    targetEl = col;
+                } else {
+                    col.style.display = "none";
+                }
+            });
+
+            if (badge) {
+                badge.textContent = value;
+                badge.className = "badge bg-primary text-white";
+                badge.style.background = "";
+                badge.style.color = "";
+                badge.style.borderColor = "";
+            }
+
+            if (resetContainer) {
+                resetContainer.innerHTML = `
+                    <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 d-inline-flex align-items-center gap-1 shadow-xs" id="btnShowAllBreakdowns" title="Show all breakdown dimensions" style="height: 24px; font-size: 0.725rem;">
+                        <i class="bi bi-grid"></i>
+                        <span>Show All</span>
+                    </button>
+                `;
+                const btnShowAll = document.getElementById("btnShowAllBreakdowns");
+                if (btnShowAll) {
+                    btnShowAll.addEventListener("click", function () {
+                        const allRadio = document.getElementById("breakdownAll");
+                        if (allRadio) {
+                            allRadio.checked = true;
+                            allRadio.dispatchEvent(new Event("change"));
+                        } else {
+                            AppState.breakdownAnalysis = "All";
+                            applyBreakdownAnalysisFilter("All", false);
+                            updateKpiSelectionText();
+                        }
+                    });
+                }
+            }
+
+            // Resize target chart to adapt to full-width container
+            if (target && target.inst && ChartInstances[target.inst]) {
+                setTimeout(() => {
+                    try {
+                        ChartInstances[target.inst].resize();
+                    } catch (e) {}
+                }, 50);
+            }
+
+            // Smooth scroll to breakdown section
+            if (shouldScroll) {
+                const section = document.getElementById("breakdownAnalysisSection") || targetEl;
+                if (section) {
+                    section.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            }
+        }
     }
 
     /**

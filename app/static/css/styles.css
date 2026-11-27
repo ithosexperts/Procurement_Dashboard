@@ -266,6 +266,25 @@ body, .portal-body {
     box-shadow: 0 0 0 0.18rem rgba(15, 59, 108, 0.2);
 }
 
+.btn-group.flex-wrap {
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.btn-group.flex-wrap > .btn {
+    border-radius: 6px !important;
+    margin-left: 0 !important;
+}
+
+#breakdownAnalysisContainer {
+    transition: all 0.2s ease-in-out;
+}
+
+.breakdown-highlight-card {
+    border: 2px solid #0F3B6C !important;
+    box-shadow: 0 4px 14px rgba(15, 59, 108, 0.15) !important;
+}
+
 /* Refined Welcome Panel (Empty State) */
 #selectionPromptCard.welcome-panel {
     background-color: #FFFFFF;

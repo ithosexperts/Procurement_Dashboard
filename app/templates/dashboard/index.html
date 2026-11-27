@@ -111,6 +111,39 @@
                 </div>
             </div>
         </div>
+
+        <!-- Breakdown Analysis selector -->
+        <div class="d-flex flex-wrap align-items-center gap-2 pt-2 mt-3 border-top border-light-subtle" id="breakdownAnalysisContainer">
+            <label class="selection-group-label mb-0 text-nowrap"><i class="bi bi-diagram-3 text-primary me-1"></i>BREAKDOWN ANALYSIS:</label>
+            <div class="btn-group btn-group-sm btn-group-toggle flex-wrap" role="group" id="breakdownAnalysisGroup" aria-label="Breakdown Analysis granularity">
+                <input type="radio" class="btn-check" name="breakdownAnalysis" id="breakdownAll" value="All" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="breakdownAll">All</label>
+
+                <input type="radio" class="btn-check" name="breakdownAnalysis" id="breakdownImportDomestic" value="Import vs Domestic" autocomplete="off">
+                <label class="btn btn-outline-primary" for="breakdownImportDomestic">1. Import vs Domestic</label>
+
+                <input type="radio" class="btn-check" name="breakdownAnalysis" id="breakdownReceivingState" value="Receiving State" autocomplete="off">
+                <label class="btn btn-outline-primary" for="breakdownReceivingState">2. Receiving State</label>
+
+                <input type="radio" class="btn-check" name="breakdownAnalysis" id="breakdownItemGroup" value="Item Group" autocomplete="off">
+                <label class="btn btn-outline-primary" for="breakdownItemGroup">3. Item Group</label>
+
+                <input type="radio" class="btn-check" name="breakdownAnalysis" id="breakdownSubGroup1" value="Sub Group 1" autocomplete="off">
+                <label class="btn btn-outline-primary" for="breakdownSubGroup1">4. Sub Group 1</label>
+
+                <input type="radio" class="btn-check" name="breakdownAnalysis" id="breakdownSubGroup2" value="Sub Group 2" autocomplete="off">
+                <label class="btn btn-outline-primary" for="breakdownSubGroup2">5. Sub Group 2</label>
+
+                <input type="radio" class="btn-check" name="breakdownAnalysis" id="breakdownBrand" value="Brand" autocomplete="off">
+                <label class="btn btn-outline-primary" for="breakdownBrand">6. Brand</label>
+
+                <input type="radio" class="btn-check" name="breakdownAnalysis" id="breakdownBuyer" value="Buyer" autocomplete="off">
+                <label class="btn btn-outline-primary" for="breakdownBuyer">7. Buyer</label>
+
+                <input type="radio" class="btn-check" name="breakdownAnalysis" id="breakdownCreditAdvance" value="Credit vs Advance" autocomplete="off">
+                <label class="btn btn-outline-primary" for="breakdownCreditAdvance">8. Credit vs Advance</label>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -493,17 +526,18 @@
                 </div>
             </div>
 
-            <!-- Ten Breakdown Horizontal Bar Charts (CH3) -->
-            <div class="card border-0 shadow-sm mb-3">
+            <!-- Breakdown Horizontal Bar Charts (CH3) -->
+            <div class="card border-0 shadow-sm mb-3" id="breakdownAnalysisSection">
                 <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2" style="background: linear-gradient(135deg, #F0F6FC 0%, #E6F0FA 100%); border: 1px solid #DCE6F1; border-left: 4px solid #0F3B6C; border-radius: 8px;">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="d-inline-flex align-items-center justify-content-center text-white" style="width: 26px; height: 26px; border-radius: 6px; background: #0F3B6C; box-shadow: 0 1px 2px rgba(15, 59, 108, 0.25);">
                             <i class="bi bi-grid-fill" style="font-size: 0.8rem;"></i>
                         </span>
                         <h6 class="fw-bold mb-0" style="font-size: 0.925rem; letter-spacing: -0.01em; color: #0A2540;">
                             Breakdown Analysis
                         </h6>
-                        <span class="badge" style="background: #FFFFFF; color: #0F3B6C; font-weight: 700; font-size: 0.725rem; border: 1px solid #BFDBFE; border-radius: 6px; padding: 0.35rem 0.6rem;">10 Dimensions</span>
+                        <span class="badge" id="breakdownDimensionsBadge" style="background: #FFFFFF; color: #0F3B6C; font-weight: 700; font-size: 0.725rem; border: 1px solid #BFDBFE; border-radius: 6px; padding: 0.35rem 0.6rem;">All Dimensions</span>
+                        <span id="breakdownResetFilterContainer"></span>
                     </div>
                     <span class="small fw-medium" style="color: #475569; font-size: 0.775rem;"><i class="bi bi-bar-chart-steps me-1 text-primary"></i>Horizontal bars &bull; Ranked largest to smallest &bull; Scrollable</span>
                 </div>

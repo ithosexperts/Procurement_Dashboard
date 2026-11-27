@@ -64,6 +64,18 @@ async def test_dashboard_ui_stage1_and_stage2_controls():
     assert 'id="basisPostingDate"' in html
     assert 'id="basisVendorDocDate"' in html
 
+    # Breakdown Analysis Granularity options
+    assert 'id="breakdownAnalysisGroup"' in html
+    assert 'id="breakdownAll"' in html
+    assert 'id="breakdownImportDomestic"' in html
+    assert 'id="breakdownReceivingState"' in html
+    assert 'id="breakdownItemGroup"' in html
+    assert 'id="breakdownSubGroup1"' in html
+    assert 'id="breakdownSubGroup2"' in html
+    assert 'id="breakdownBrand"' in html
+    assert 'id="breakdownBuyer"' in html
+    assert 'id="breakdownCreditAdvance"' in html
+
 
 @pytest.mark.asyncio
 async def test_dashboard_ui_selection_prompt_and_gating():
