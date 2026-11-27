@@ -1512,6 +1512,7 @@
                 // Level 3 -> Level 4 (Weekly to Daily)
                 let weekObj = meta;
                 if (!weekObj || !weekObj.start_date) {
+                    if (!dd.year || !dd.month) return;
                     const yr = dd.year;
                     const mo = dd.month;
                     const match = String(clickedLabel).match(/Week\s*(\d+)/i);
@@ -1680,6 +1681,7 @@
                         AppState.filters.week = [];
                         AppState.filters.day = [];
                     } else if (this.value === "Monthly" || this.value === "Weekly" || this.value === "Daily") {
+                        const hadDrilldown = !!(AppState.drilldown.year || AppState.drilldown.financialYear || AppState.drilldown.month || AppState.drilldown.week || AppState.drilldown.date);
                         AppState.drilldown.sourceGranularity = this.value;
                         AppState.drilldown.level = this.value.toLowerCase();
                         AppState.drilldown.financialYear = null;
@@ -1688,6 +1690,15 @@
                         AppState.drilldown.monthName = null;
                         AppState.drilldown.week = null;
                         AppState.drilldown.date = null;
+                        if (hadDrilldown) {
+                            AppState.filters.financialYear = [];
+                            AppState.filters.year = [];
+                            AppState.filters.month = [];
+                            AppState.filters.week = [];
+                            AppState.filters.day = [];
+                            AppState.filters.fromDate = null;
+                            AppState.filters.toDate = null;
+                        }
                     }
                     ChartDrillDown.renderBreadcrumbs();
                     ChartDrillDown.updateTitleAndSubtitle();
