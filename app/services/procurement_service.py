@@ -1217,7 +1217,12 @@ def _compute_main_chart(
         return {"labels": [], "datasets": [], "meta": []}
 
     if bd_col:
-        periods_df = df[[sort_col, label_col]].drop_duplicates().sort_values(sort_col)
+        periods_df = (
+            df.groupby(label_col, observed=False)[sort_col]
+            .min()
+            .reset_index()
+            .sort_values(by=sort_col)
+        )
         labels = [str(lbl) for lbl in periods_df[label_col].tolist()]
         meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else "", "financialYear": lbl if granularity in ("Financial Year", "Financial_Year", "FY") else ""} for lbl in labels]
         datasets = _build_breakdown_datasets(df, labels, df[label_col].astype(str), bd_col, measure)

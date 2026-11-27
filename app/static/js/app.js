@@ -1196,15 +1196,29 @@
                     DOM.mainChartSubtitle.textContent = "Double-click a bar to drill down (Year → Month → Week → Date)";
                 }
             } else if (dd.level === "monthly") {
-                const subTitlePrefix = dd.sourceGranularity === "Financial Year" && dd.financialYear ? `FY ${dd.financialYear}` : String(dd.year || '');
-                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Monthly)${brk} – ${subTitlePrefix}`;
-                if (DOM.mainChartSubtitle) {
-                    DOM.mainChartSubtitle.textContent = "Double-click a month to view weekly breakdown";
+                if (dd.financialYear || dd.year) {
+                    const subTitlePrefix = dd.sourceGranularity === "Financial Year" && dd.financialYear ? `FY ${dd.financialYear}` : String(dd.year || '');
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Monthly)${brk} – ${subTitlePrefix}`;
+                    if (DOM.mainChartSubtitle) {
+                        DOM.mainChartSubtitle.textContent = "Double-click a month to view weekly breakdown";
+                    }
+                } else {
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Monthly)${brk} – ${basis}`;
+                    if (DOM.mainChartSubtitle) {
+                        DOM.mainChartSubtitle.textContent = "Monthly breakdown across selected period";
+                    }
                 }
             } else if (dd.level === "weekly") {
-                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Weekly)${brk} – ${dd.monthName || 'Month'} ${dd.year}`;
-                if (DOM.mainChartSubtitle) {
-                    DOM.mainChartSubtitle.textContent = "Double-click a week to view daily breakdown";
+                if (dd.year || dd.monthName) {
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Weekly)${brk} – ${dd.monthName || 'Month'} ${dd.year || ''}`;
+                    if (DOM.mainChartSubtitle) {
+                        DOM.mainChartSubtitle.textContent = "Double-click a week to view daily breakdown";
+                    }
+                } else {
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Weekly)${brk} – ${basis}`;
+                    if (DOM.mainChartSubtitle) {
+                        DOM.mainChartSubtitle.textContent = "Weekly breakdown across selected period";
+                    }
                 }
             } else if (dd.level === "daily") {
                 if (dd.date) {
@@ -1267,6 +1281,14 @@
 
             if (!isFY && dd.level === "yearly") {
                 ol.appendChild(createItem("Yearly", "yearly", true));
+                if (DOM.btnChartDrilldownBack) DOM.btnChartDrilldownBack.classList.add("d-none");
+                if (DOM.btnChartDrilldownReset) DOM.btnChartDrilldownReset.classList.add("d-none");
+                return;
+            }
+
+            if (!dd.year && !dd.financialYear && (dd.level === "monthly" || dd.level === "weekly" || dd.level === "daily")) {
+                const labelMap = { monthly: "Monthly", weekly: "Weekly", daily: "Daily" };
+                ol.appendChild(createItem(labelMap[dd.level] || AppState.granularity, dd.level, true));
                 if (DOM.btnChartDrilldownBack) DOM.btnChartDrilldownBack.classList.add("d-none");
                 if (DOM.btnChartDrilldownReset) DOM.btnChartDrilldownReset.classList.add("d-none");
                 return;
@@ -1656,6 +1678,15 @@
                         AppState.filters.month = [];
                         AppState.filters.week = [];
                         AppState.filters.day = [];
+                    } else if (this.value === "Monthly" || this.value === "Weekly" || this.value === "Daily") {
+                        AppState.drilldown.sourceGranularity = this.value;
+                        AppState.drilldown.level = this.value.toLowerCase();
+                        AppState.drilldown.financialYear = null;
+                        AppState.drilldown.year = null;
+                        AppState.drilldown.month = null;
+                        AppState.drilldown.monthName = null;
+                        AppState.drilldown.week = null;
+                        AppState.drilldown.date = null;
                     }
                     ChartDrillDown.renderBreadcrumbs();
                     ChartDrillDown.updateTitleAndSubtitle();
@@ -2007,7 +2038,7 @@
                 if (cData && cData.datasets) {
                     cData.datasets.forEach(ds => {
                         if (!ds._isAverageLine && ds.type !== "line") {
-                            ds.minBarLength = 8;
+                            ds.minBarLength = isBreakdownActive ? 0 : 8;
                             if (ds.backgroundColor && ds.backgroundColor !== "#0F3B6C") {
                                 ds.hoverBackgroundColor = ds.backgroundColor;
                                 ds.hoverBorderColor = ds.borderColor || ds.backgroundColor;
@@ -2038,6 +2069,7 @@
                         maintainAspectRatio: false,
                         scales: {
                             x: {
+                                stacked: isBreakdownActive,
                                 grid: {
                                     display: true,
                                     color: "#E2E8F0",
@@ -2050,6 +2082,7 @@
                                 }
                             },
                             y: {
+                                stacked: isBreakdownActive,
                                 type: "linear",
                                 position: "left",
                                 beginAtZero: true,
@@ -3682,7 +3715,7 @@
         if (chartData && chartData.datasets) {
             chartData.datasets.forEach(ds => {
                 if (!ds._isAverageLine && ds.type !== "line") {
-                    ds.minBarLength = 8;
+                    ds.minBarLength = isBreakdownActive ? 0 : 8;
                     if (ds.backgroundColor && ds.backgroundColor !== "#0F3B6C") {
                         ds.hoverBackgroundColor = ds.backgroundColor;
                         ds.hoverBorderColor = ds.borderColor || ds.backgroundColor;
@@ -3716,6 +3749,7 @@
                 },
                 scales: {
                     x: {
+                        stacked: isBreakdownActive,
                         grid: {
                             display: true,
                             color: "#E2E8F0",
@@ -3728,6 +3762,7 @@
                         }
                     },
                     y: {
+                        stacked: isBreakdownActive,
                         type: "linear",
                         position: "left",
                         beginAtZero: true,
