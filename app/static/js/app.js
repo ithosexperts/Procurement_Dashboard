@@ -3568,15 +3568,10 @@
         // Always strip any existing average line dataset before re-computing
         chartData.datasets = chartData.datasets.filter(ds => !ds._isAverageLine);
 
-        // Granularity-aware period name
+        // Granularity-aware period name matching the actual bars displayed
         let periodName = "Period";
-        const dd = AppState.drilldown;
-        if (dd && dd.level === "monthly") {
-            periodName = "Weekly";
-        } else if (dd && dd.level === "weekly") {
-            periodName = "Daily";
-        } else if (AppState.granularity === "Yearly" || AppState.granularity === "Financial Year") {
-            periodName = "Annual";
+        if (AppState.granularity === "Yearly" || AppState.granularity === "Financial Year") {
+            periodName = "Yearly";
         } else if (AppState.granularity === "Monthly") {
             periodName = "Monthly";
         } else if (AppState.granularity === "Weekly") {
