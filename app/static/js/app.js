@@ -4039,7 +4039,47 @@
         const badge = document.getElementById("breakdownDimensionsBadge");
         const resetContainer = document.getElementById("breakdownResetFilterContainer");
 
-        if (!value || value === "All" || !breakdownMap[value]) {
+        if (value === "None") {
+            // Hide all breakdown charts
+            allBreakdownCols.forEach(col => {
+                col.style.display = "none";
+                if (col.classList.contains("breakdown-isolated-col")) {
+                    col.classList.remove("breakdown-isolated-col", "col-12", "breakdown-highlight-card");
+                    col.classList.add("col-md-6");
+                }
+            });
+
+            if (badge) {
+                badge.textContent = "None";
+                badge.className = "badge bg-secondary text-white";
+                badge.style.background = "";
+                badge.style.color = "";
+                badge.style.borderColor = "";
+            }
+
+            if (resetContainer) {
+                resetContainer.innerHTML = `
+                    <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 d-inline-flex align-items-center gap-1 shadow-xs" id="btnShowAllBreakdowns" title="Show all breakdown dimensions" style="height: 24px; font-size: 0.725rem;">
+                        <i class="bi bi-grid"></i>
+                        <span>Show All</span>
+                    </button>
+                `;
+                const btnShowAll = document.getElementById("btnShowAllBreakdowns");
+                if (btnShowAll) {
+                    btnShowAll.addEventListener("click", function () {
+                        const allRadio = document.getElementById("breakdownAll");
+                        if (allRadio) {
+                            allRadio.checked = true;
+                            allRadio.dispatchEvent(new Event("change"));
+                        } else {
+                            AppState.breakdownAnalysis = "All";
+                            applyBreakdownAnalysisFilter("All", false);
+                            updateKpiSelectionText();
+                        }
+                    });
+                }
+            }
+        } else if (!value || value === "All" || !breakdownMap[value]) {
             // Show all dimensions in grid
             allBreakdownCols.forEach(col => {
                 col.style.display = "";
