@@ -2037,7 +2037,7 @@
                 if (cData && cData.datasets) {
                     cData.datasets.forEach(ds => {
                         if (!ds._isAverageLine && ds.type !== "line") {
-                            ds.minBarLength = isBreakdownActive ? 0 : 8;
+                            ds.minBarLength = isBreakdownActive ? 4 : 8;
                             if (ds.backgroundColor && ds.backgroundColor !== "#0F3B6C") {
                                 ds.hoverBackgroundColor = ds.backgroundColor;
                                 ds.hoverBorderColor = ds.borderColor || ds.backgroundColor;
@@ -2068,7 +2068,7 @@
                         maintainAspectRatio: false,
                         scales: {
                             x: {
-                                stacked: isBreakdownActive,
+                                stacked: false,
                                 grid: {
                                     display: true,
                                     color: "#E2E8F0",
@@ -2081,7 +2081,7 @@
                                 }
                             },
                             y: {
-                                stacked: isBreakdownActive,
+                                stacked: false,
                                 type: "linear",
                                 position: "left",
                                 beginAtZero: true,
@@ -3713,7 +3713,7 @@
         if (chartData && chartData.datasets) {
             chartData.datasets.forEach(ds => {
                 if (!ds._isAverageLine && ds.type !== "line") {
-                    ds.minBarLength = isBreakdownActive ? 0 : 8;
+                    ds.minBarLength = isBreakdownActive ? 4 : 8;
                     if (ds.backgroundColor && ds.backgroundColor !== "#0F3B6C") {
                         ds.hoverBackgroundColor = ds.backgroundColor;
                         ds.hoverBorderColor = ds.borderColor || ds.backgroundColor;
@@ -3747,7 +3747,7 @@
                 },
                 scales: {
                     x: {
-                        stacked: isBreakdownActive,
+                        stacked: false,
                         grid: {
                             display: true,
                             color: "#E2E8F0",
@@ -3760,7 +3760,7 @@
                         }
                     },
                     y: {
-                        stacked: isBreakdownActive,
+                        stacked: false,
                         type: "linear",
                         position: "left",
                         beginAtZero: true,
