@@ -168,6 +168,7 @@ async def procurement_query_api(
     granularity = payload.get("granularity", "Yearly")
     measure = payload.get("measure", "Spend")
     date_basis = payload.get("date_basis", "Posting Date")
+    breakdown_analysis = payload.get("breakdown_analysis", "All")
     filters = payload.get("filters", {})
     page = int(payload.get("page", 1))
     page_size = int(payload.get("page_size", 50))
@@ -187,6 +188,7 @@ async def procurement_query_api(
         sort_direction=sort_direction,
         intent=intent,
         top_vendors_limit=top_vendors_limit,
+        breakdown_analysis=breakdown_analysis,
     )
 
     return JSONResponse(result)

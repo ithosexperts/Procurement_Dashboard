@@ -826,19 +826,99 @@ def _get_period_cols(df: pd.DataFrame, granularity: str, date_basis: str) -> tup
         return label_col, sort_col
 
 
+BREAKDOWN_COL_MAP = {
+    "Import vs Domestic": "ImportDomestic",
+    "Receiving State": RECEIVING_STATE_COL,
+    "Item Group": ITEM_GROUP_COL,
+    "Sub Group 1": SUB_GROUP1_COL,
+    "Sub Group 2": SUB_GROUP2_COL,
+    "Brand": BRAND_COL,
+    "Buyer": BUYER_COL,
+    "Credit vs Advance": PURCHASE_TYPE_COL,
+}
+
+
+def _resolve_breakdown_col(df: pd.DataFrame, breakdown_analysis: str | None) -> str | None:
+    """Resolve the DataFrame column for the requested Breakdown Analysis dimension, if active."""
+    if not breakdown_analysis or breakdown_analysis in ("All", "None"):
+        return None
+    col = BREAKDOWN_COL_MAP.get(breakdown_analysis)
+    if not col:
+        return None
+    if col == "ImportDomestic":
+        if "ImportDomestic" not in df.columns:
+            if CURRENCY_COL in df.columns:
+                df["ImportDomestic"] = np.where(df[CURRENCY_COL] == "INR", "Domestic", "Import")
+            else:
+                df["ImportDomestic"] = "Domestic"
+        return "ImportDomestic"
+    return _find_column(df, col)
+
+
+def _build_breakdown_datasets(
+    df: pd.DataFrame,
+    period_keys: list[Any],
+    period_series: pd.Series,
+    bd_col: str,
+    measure: str,
+    max_categories: int = 8,
+) -> list[dict[str, Any]]:
+    """Build per-category datasets for a Breakdown Analysis dimension aligned to period_keys."""
+    val_col = SPEND_COL if measure == "Spend" else QTY_COL
+    if val_col not in df.columns or bd_col not in df.columns or df.empty:
+        return []
+
+    cats = df[bd_col].astype(str).replace(
+        {"None": "(Blank)", "nan": "(Blank)", "": "(Blank)", "Null": "(Blank)", "null": "(Blank)"}
+    )
+    cat_totals = df.groupby(cats, observed=False)[val_col].sum().sort_values(ascending=False)
+    if len(cat_totals) > max_categories:
+        top_cats = cat_totals.index[:max_categories].tolist()
+        plot_cats = pd.Series(np.where(cats.isin(top_cats), cats, "Others"), index=df.index)
+        ordered_cats = top_cats + ["Others"]
+    else:
+        plot_cats = cats
+        ordered_cats = cat_totals.index.tolist()
+
+    grouped_map = df.groupby([period_series, plot_cats], observed=False)[val_col].sum().to_dict()
+
+    color_palette = [
+        "#0F3B6C", "#0f766e", "#2563eb", "#d97706",
+        "#7c3aed", "#dc2626", "#059669", "#ea580c",
+    ]
+
+    datasets = []
+    for idx, cat in enumerate(ordered_cats):
+        color = "#64748b" if cat == "Others" else color_palette[idx % len(color_palette)]
+        data = [round(float(grouped_map.get((pk, cat), 0.0)), 2) for pk in period_keys]
+        datasets.append({
+            "label": str(cat),
+            "data": data,
+            "backgroundColor": color,
+            "borderColor": color,
+            "borderWidth": 1,
+        })
+    return datasets
+
+
 def _compute_main_chart(
     df: pd.DataFrame,
     granularity: str,
     measure: str,
     date_basis: str,
     filters: dict[str, Any] | None = None,
+    breakdown_analysis: str | None = None,
 ) -> dict[str, Any]:
     """
     Generate main vertical bar chart grouping according to Rules FL5, FL6, CH1, CH2,
     with cascading drill-down support: Year -> Month -> Week -> Date.
+    When breakdown_analysis is a specific dimension (1–8), splits each period into
+    per-category series for that dimension.
     """
     if df.empty:
         return {"labels": [], "datasets": [], "meta": []}
+
+    bd_col = _resolve_breakdown_col(df, breakdown_analysis)
 
     is_posting = (date_basis == "Posting Date")
     year_col = "Posting Year" if is_posting else "Vendor Doc Year"
@@ -885,6 +965,10 @@ def _compute_main_chart(
                 }
                 for m in range(1, 13)
             ]
+
+            if bd_col:
+                datasets = _build_breakdown_datasets(df, list(range(1, 13)), df[month_col], bd_col, measure)
+                return {"labels": labels, "datasets": datasets, "meta": meta}
 
             if measure == "Spend":
                 m_spend_map = df.groupby(month_col, observed=False)[SPEND_COL].sum().to_dict()
@@ -952,6 +1036,12 @@ def _compute_main_chart(
                     for m, y in fy_months
                 ]
 
+                if bd_col:
+                    ym_keys = [(y, m) for m, y in fy_months]
+                    ym_series = pd.Series(list(zip(df[year_col], df[month_col])), index=df.index)
+                    datasets = _build_breakdown_datasets(df, ym_keys, ym_series, bd_col, measure)
+                    return {"labels": labels, "datasets": datasets, "meta": meta}
+
                 if measure == "Spend":
                     ym_spend_map = df.groupby([year_col, month_col], observed=False)[SPEND_COL].sum().to_dict()
                     data = [round(float(ym_spend_map.get((y, m), 0.0)), 2) for m, y in fy_months]
@@ -1006,6 +1096,15 @@ def _compute_main_chart(
             weeks = get_month_weeks(single_year, single_month)
             labels = [w["label"] for w in weeks]
             meta = weeks
+
+            if bd_col:
+                week_series = pd.Series("", index=df.index)
+                if date_col_iso in df.columns:
+                    for w in weeks:
+                        c = (df[date_col_iso] >= w["start_date"]) & (df[date_col_iso] <= w["end_date"])
+                        week_series.loc[c] = w["label"]
+                datasets = _build_breakdown_datasets(df, labels, week_series, bd_col, measure)
+                return {"labels": labels, "datasets": datasets, "meta": meta}
 
             if measure == "Spend":
                 data = []
@@ -1071,6 +1170,11 @@ def _compute_main_chart(
                 labels = [d.strftime("%d %b %Y") for d in days]
                 meta = [{"date": d.strftime("%Y-%m-%d"), "label": d.strftime("%d %b %Y")} for d in days]
 
+                if bd_col:
+                    day_keys = [d.strftime("%Y-%m-%d") for d in days]
+                    datasets = _build_breakdown_datasets(df, day_keys, df[date_col_iso], bd_col, measure)
+                    return {"labels": labels, "datasets": datasets, "meta": meta}
+
                 if measure == "Spend":
                     date_spend_map = df.groupby(date_col_iso, observed=False)[SPEND_COL].sum().to_dict()
                     data = [round(float(date_spend_map.get(d.strftime("%Y-%m-%d"), 0.0)), 2) for d in days]
@@ -1111,6 +1215,13 @@ def _compute_main_chart(
     label_col, sort_col = _get_period_cols(df, granularity, date_basis)
     if label_col not in df.columns or sort_col not in df.columns:
         return {"labels": [], "datasets": [], "meta": []}
+
+    if bd_col:
+        periods_df = df[[sort_col, label_col]].drop_duplicates().sort_values(sort_col)
+        labels = [str(lbl) for lbl in periods_df[label_col].tolist()]
+        meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else "", "financialYear": lbl if granularity in ("Financial Year", "Financial_Year", "FY") else ""} for lbl in labels]
+        datasets = _build_breakdown_datasets(df, labels, df[label_col].astype(str), bd_col, measure)
+        return {"labels": labels, "datasets": datasets, "meta": meta}
 
     if measure == "Spend":
         grouped = df.groupby([sort_col, label_col], observed=False)[SPEND_COL].sum().reset_index()
@@ -1572,6 +1683,7 @@ def _sync_query_procurement_data(
     sort_direction: str,
     intent: str = "all",
     top_vendors_limit: int = 50,
+    breakdown_analysis: str = "All",
 ) -> dict[str, Any]:
     """Synchronous core query engine executed inside worker threadpool."""
     t_start = time.perf_counter()
@@ -1600,7 +1712,7 @@ def _sync_query_procurement_data(
     # Fast path: Intent == "granularity"
     if intent == "granularity":
         t0 = time.perf_counter()
-        main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis, filters=filters)
+        main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis, filters=filters, breakdown_analysis=breakdown_analysis)
         t_main = time.perf_counter() - t0
         t_total = time.perf_counter() - t_start
 
@@ -1633,7 +1745,7 @@ def _sync_query_procurement_data(
     # Fast path: Intent == "measure"
     if intent == "measure":
         t0 = time.perf_counter()
-        main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis, filters=filters)
+        main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis, filters=filters, breakdown_analysis=breakdown_analysis)
         t_main = time.perf_counter() - t0
 
         t0 = time.perf_counter()
@@ -1687,7 +1799,7 @@ def _sync_query_procurement_data(
 
     # 3. Main chart
     t0 = time.perf_counter()
-    main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis, filters=filters)
+    main_chart = _compute_main_chart(filtered_df, granularity, measure, date_basis, filters=filters, breakdown_analysis=breakdown_analysis)
     t_main = time.perf_counter() - t0
 
     # 4. Breakdown charts (cached by dataframe id, date_basis, filter_hash, measure, top_vendors_limit)
@@ -1738,6 +1850,7 @@ async def query_procurement_data(
     sort_direction: str = "desc",
     intent: str = "all",
     top_vendors_limit: int = 50,
+    breakdown_analysis: str = "All",
 ) -> dict[str, Any]:
     """
     Optimized in-memory query engine:
@@ -1777,4 +1890,5 @@ async def query_procurement_data(
         sort_direction=sort_direction,
         intent=intent,
         top_vendors_limit=top_vendors_limit,
+        breakdown_analysis=breakdown_analysis,
     )

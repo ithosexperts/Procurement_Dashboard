@@ -1177,10 +1177,13 @@
             if (!DOM.mainChartTitle) return;
             const measure = AppState.measure || "Spend";
             const basis = AppState.dateBasis || "Posting Date";
+            const brk = (AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All" && AppState.breakdownAnalysis !== "None")
+                ? ` [${AppState.breakdownAnalysis}]`
+                : "";
             const dd = AppState.drilldown;
 
             if (AppState.granularity === "Financial Year" || dd.level === "financialYear") {
-                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Financial Year) – ${basis}`;
+                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Financial Year)${brk} – ${basis}`;
                 if (DOM.mainChartSubtitle) {
                     DOM.mainChartSubtitle.textContent = "Double-click a bar to drill down (FY → Month → Week → Date)";
                 }
@@ -1188,18 +1191,18 @@
             }
 
             if (dd.level === "yearly") {
-                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Yearly) – ${basis}`;
+                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Yearly)${brk} – ${basis}`;
                 if (DOM.mainChartSubtitle) {
                     DOM.mainChartSubtitle.textContent = "Double-click a bar to drill down (Year → Month → Week → Date)";
                 }
             } else if (dd.level === "monthly") {
                 const subTitlePrefix = dd.sourceGranularity === "Financial Year" && dd.financialYear ? `FY ${dd.financialYear}` : String(dd.year || '');
-                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Monthly) – ${subTitlePrefix}`;
+                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Monthly)${brk} – ${subTitlePrefix}`;
                 if (DOM.mainChartSubtitle) {
                     DOM.mainChartSubtitle.textContent = "Double-click a month to view weekly breakdown";
                 }
             } else if (dd.level === "weekly") {
-                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Weekly) – ${dd.monthName || 'Month'} ${dd.year}`;
+                DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Weekly)${brk} – ${dd.monthName || 'Month'} ${dd.year}`;
                 if (DOM.mainChartSubtitle) {
                     DOM.mainChartSubtitle.textContent = "Double-click a week to view daily breakdown";
                 }
@@ -1207,17 +1210,17 @@
                 if (dd.date) {
                     const dateObj = new Date(dd.date);
                     const dateFmt = !isNaN(dateObj) ? `${String(dateObj.getDate()).padStart(2, '0')} ${MONTH_NAMES[dateObj.getMonth()]} ${dateObj.getFullYear()}` : dd.date;
-                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Daily) – ${dateFmt}`;
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Daily)${brk} – ${dateFmt}`;
                     if (DOM.mainChartSubtitle) {
                         DOM.mainChartSubtitle.textContent = "Single date filter applied across entire dashboard";
                     }
                 } else if (dd.week) {
-                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Daily) – Week ${dd.week.week_num}, ${dd.monthName || ''} ${dd.year}`;
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Daily)${brk} – Week ${dd.week.week_num}, ${dd.monthName || ''} ${dd.year}`;
                     if (DOM.mainChartSubtitle) {
                         DOM.mainChartSubtitle.textContent = "Double-click a date to apply single-date filter";
                     }
                 } else {
-                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Daily) – ${basis}`;
+                    DOM.mainChartTitle.textContent = `Procurement ${measure} by Period (Daily)${brk} – ${basis}`;
                     if (DOM.mainChartSubtitle) {
                         DOM.mainChartSubtitle.textContent = "Double-click a date to apply single-date filter";
                     }
@@ -1693,8 +1696,10 @@
                 radio.addEventListener("change", function () {
                     if (this.checked) {
                         AppState.breakdownAnalysis = this.value;
-                        applyBreakdownAnalysisFilter(this.value, true);
+                        applyBreakdownAnalysisFilter(this.value, false);
+                        ChartDrillDown.updateTitleAndSubtitle();
                         updateKpiSelectionText();
+                        executeQuery();
                     }
                 });
             });
@@ -1996,7 +2001,8 @@
                 const barDatasets = (cData && cData.datasets)
                     ? cData.datasets.filter(ds => !ds._isAverageLine && ds.type !== "line")
                     : [];
-                const isDualAxis = (AppState.measure === "Quantity" && barDatasets.length === 2);
+                const isBreakdownActive = !!(AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All" && AppState.breakdownAnalysis !== "None");
+        const isDualAxis = (AppState.measure === "Quantity" && !isBreakdownActive && barDatasets.length === 2);
 
                 if (cData && cData.datasets) {
                     cData.datasets.forEach(ds => {
@@ -3351,6 +3357,7 @@
             granularity: AppState.granularity,
             measure: AppState.measure,
             date_basis: AppState.dateBasis,
+            breakdown_analysis: AppState.breakdownAnalysis || "All",
             filters: AppState.filters,
             page: AppState.tablePage,
             page_size: AppState.tablePageSize,
@@ -3552,7 +3559,8 @@
         // When Measure is Quantity with multiple distinct UoMs (e.g. MM & COIL),
         // adding different physical units into a single flat line is mathematically invalid.
         // Instead, compute each UoM's own average and display in the header summary badge!
-        if (AppState.measure === "Quantity" && barDatasets.length > 1) {
+        const isBreakdownActive = !!(AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All" && AppState.breakdownAnalysis !== "None");
+        if (AppState.measure === "Quantity" && !isBreakdownActive && barDatasets.length > 1) {
             const parts = [];
             barDatasets.forEach(ds => {
                 let sum = 0;
@@ -3668,7 +3676,8 @@
         const barDatasets = (chartData && chartData.datasets)
             ? chartData.datasets.filter(ds => !ds._isAverageLine && ds.type !== "line")
             : [];
-        const isDualAxis = (AppState.measure === "Quantity" && barDatasets.length === 2);
+        const isBreakdownActive = !!(AppState.breakdownAnalysis && AppState.breakdownAnalysis !== "All" && AppState.breakdownAnalysis !== "None");
+        const isDualAxis = (AppState.measure === "Quantity" && !isBreakdownActive && barDatasets.length === 2);
 
         if (chartData && chartData.datasets) {
             chartData.datasets.forEach(ds => {
