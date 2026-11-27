@@ -1505,7 +1505,8 @@
             } else if (dd.level === "monthly") {
                 // Level 2 -> Level 3 (Monthly to Weekly)
                 const moInfo = meta.month ? { num: meta.month, name: meta.month_name } : parseMonthInfo(clickedLabel);
-                const yr = meta.year || dd.year;
+                const labelYearMatch = String(clickedLabel).match(/(\d{4})$/);
+                const yr = meta.year || dd.year || (labelYearMatch ? labelYearMatch[1] : null);
                 drillToWeekly(yr, moInfo.num, moInfo.name);
             } else if (dd.level === "weekly") {
                 // Level 3 -> Level 4 (Weekly to Daily)

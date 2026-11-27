@@ -1226,7 +1226,14 @@ def _compute_main_chart(
             .sort_values(by=sort_col)
         )
         labels = [str(lbl) for lbl in periods_df[label_col].tolist()]
-        meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else "", "financialYear": lbl if granularity in ("Financial Year", "Financial_Year", "FY") else ""} for lbl in labels]
+        meta = [
+            {
+                "label": lbl,
+                "year": lbl if granularity == "Yearly" else (lbl.split("-")[-1] if granularity == "Monthly" and "-" in lbl else ""),
+                "financialYear": lbl if granularity in ("Financial Year", "Financial_Year", "FY") else "",
+            }
+            for lbl in labels
+        ]
         datasets = _build_breakdown_datasets(df, labels, df[label_col].astype(str), bd_col, measure)
         return {"labels": labels, "datasets": datasets, "meta": meta}
 
@@ -1234,7 +1241,14 @@ def _compute_main_chart(
         grouped = df.groupby([sort_col, label_col], observed=False)[SPEND_COL].sum().reset_index()
         grouped = grouped.sort_values(by=sort_col)
         labels = [str(lbl) for lbl in grouped[label_col].tolist()]
-        meta = [{"label": lbl, "year": lbl if granularity == "Yearly" else "", "financialYear": lbl if granularity in ("Financial Year", "Financial_Year", "FY") else ""} for lbl in labels]
+        meta = [
+            {
+                "label": lbl,
+                "year": lbl if granularity == "Yearly" else (lbl.split("-")[-1] if granularity == "Monthly" and "-" in lbl else ""),
+                "financialYear": lbl if granularity in ("Financial Year", "Financial_Year", "FY") else "",
+            }
+            for lbl in labels
+        ]
 
         return {
             "labels": labels,
