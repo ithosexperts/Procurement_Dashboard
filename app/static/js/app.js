@@ -3626,36 +3626,77 @@
         }
 
         const numPoints = chartData.labels.length;
+
+        // When Breakdown Analysis is active, compute separate per-category averages
+        // (e.g., UP / DL / (Blank), Domestic / Import, Credit / Advance)
+        if (isBreakdownActive && barDatasets.length > 0) {
+            const parts = [];
+            const drawLinesOnChart = barDatasets.length <= 4;
+
+            barDatasets.forEach(ds => {
+                let sum = 0;
+                if (ds.data) {
+                    ds.data.forEach(v => {
+                        const num = Number(v);
+                        if (v !== null && v !== undefined && !isNaN(num)) {
+                            sum += num;
+                        }
+                    });
+                }
+                const avg = numPoints > 0 ? (sum / numPoints) : 0;
+                const fmt = (AppState.measure === "Spend")
+                    ? IndianCurrencyFormatter.formatCompact(avg, 2)
+                    : IndianCurrencyFormatter.formatQuantityCompact(avg, 2);
+                parts.push(`${ds.label}: ${fmt}`);
+
+                if (drawLinesOnChart) {
+                    const lineColor = ds.backgroundColor || "#D97706";
+                    chartData.datasets.push({
+                        _isAverageLine: true,
+                        type: "line",
+                        label: `Avg (${ds.label}): ${fmt}`,
+                        data: new Array(numPoints).fill(avg),
+                        borderColor: lineColor,
+                        backgroundColor: "transparent",
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: lineColor,
+                        pointHoverBorderColor: "#FFFFFF",
+                        pointHoverBorderWidth: 2,
+                        fill: false,
+                        tension: 0,
+                        order: -10
+                    });
+                }
+            });
+
+            updateMainChartAverageBadge({
+                periodName,
+                formattedAvg: parts.join(" | ")
+            });
+            return null;
+        }
+
         let totalVal = 0;
         let validCount = 0;
 
         for (let i = 0; i < numPoints; i++) {
-            if (isBreakdownActive) {
-                // Grouped side-by-side breakdown bars: average across all individual bars on the graph
-                barDatasets.forEach(ds => {
-                    const raw = ds.data ? ds.data[i] : null;
-                    const val = Number(raw);
-                    if (raw !== null && raw !== undefined && !isNaN(val)) {
-                        totalVal += val;
-                        validCount++;
-                    }
-                });
-            } else {
-                let barSum = 0;
-                let hasVal = false;
-                chartData.datasets.forEach(ds => {
-                    if (ds._isAverageLine) return;
-                    const raw = ds.data ? ds.data[i] : 0;
-                    const val = Number(raw);
-                    if (!isNaN(val)) {
-                        barSum += val;
-                        hasVal = true;
-                    }
-                });
-                if (hasVal) {
-                    totalVal += barSum;
-                    validCount++;
+            let barSum = 0;
+            let hasVal = false;
+            chartData.datasets.forEach(ds => {
+                if (ds._isAverageLine) return;
+                const raw = ds.data ? ds.data[i] : 0;
+                const val = Number(raw);
+                if (!isNaN(val)) {
+                    barSum += val;
+                    hasVal = true;
                 }
+            });
+            if (hasVal) {
+                totalVal += barSum;
+                validCount++;
             }
         }
 
