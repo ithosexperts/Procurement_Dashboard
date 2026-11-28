@@ -517,12 +517,14 @@
                     </nav>
                 </div>
 
-                <div class="chart-container-vertical position-relative">
+                <div class="chart-container-vertical position-relative" id="mainChartScrollContainer">
                     <div id="mainChartLoading" class="position-absolute top-50 start-50 translate-middle text-center bg-white bg-opacity-75 p-3 rounded shadow-sm" style="display: none; z-index: 10;">
                         <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
                         <div class="small text-muted mt-1 fw-semibold">Loading period data...</div>
                     </div>
-                    <canvas id="mainChartCanvas"></canvas>
+                    <div id="mainChartScrollInner" style="position: relative; height: 100%; width: 100%;">
+                        <canvas id="mainChartCanvas"></canvas>
+                    </div>
                 </div>
             </div>
 

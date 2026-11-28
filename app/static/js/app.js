@@ -3799,6 +3799,23 @@
         // Inject Dynamic Average Benchmark Line
         addMainChartAverageLine(chartData);
 
+        // Dynamic horizontal scroll width when many periods/bars are rendered (e.g. unfiltered Daily/Weekly + Breakdown)
+        const scrollContainer = document.getElementById("mainChartScrollContainer");
+        const scrollInner = document.getElementById("mainChartScrollInner");
+        if (scrollInner) {
+            const numLabels = (chartData && chartData.labels) ? chartData.labels.length : 0;
+            const numSeries = Math.max(1, barDatasets.length);
+            const slotWidth = numSeries > 1 ? Math.max(44, numSeries * 14 + 14) : 28;
+            const requiredWidth = numLabels * slotWidth;
+            const containerWidth = scrollContainer ? Math.max(300, scrollContainer.clientWidth - 24) : 900;
+
+            if (numLabels > 18 && requiredWidth > containerWidth) {
+                scrollInner.style.width = `${Math.min(requiredWidth, 12000)}px`;
+            } else {
+                scrollInner.style.width = "100%";
+            }
+        }
+
         const ctx = canvas.getContext("2d");
         ChartInstances.main = new Chart(ctx, {
             type: "bar",

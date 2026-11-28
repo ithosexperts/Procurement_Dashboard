@@ -1058,8 +1058,10 @@ body, .portal-body {
 
 .chart-container-vertical {
     position: relative;
-    height: 340px;
+    height: 350px;
     padding: 0.75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 /* ── Transactional Data Detail Table ─────────────────────────────────────── */
