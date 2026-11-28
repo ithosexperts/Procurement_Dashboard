@@ -3627,20 +3627,32 @@
         let validCount = 0;
 
         for (let i = 0; i < numPoints; i++) {
-            let barSum = 0;
-            let hasVal = false;
-            chartData.datasets.forEach(ds => {
-                if (ds._isAverageLine) return;
-                const raw = ds.data ? ds.data[i] : 0;
-                const val = Number(raw);
-                if (!isNaN(val)) {
-                    barSum += val;
-                    hasVal = true;
+            if (isBreakdownActive) {
+                // Grouped side-by-side breakdown bars: average across all individual bars on the graph
+                barDatasets.forEach(ds => {
+                    const raw = ds.data ? ds.data[i] : null;
+                    const val = Number(raw);
+                    if (raw !== null && raw !== undefined && !isNaN(val)) {
+                        totalVal += val;
+                        validCount++;
+                    }
+                });
+            } else {
+                let barSum = 0;
+                let hasVal = false;
+                chartData.datasets.forEach(ds => {
+                    if (ds._isAverageLine) return;
+                    const raw = ds.data ? ds.data[i] : 0;
+                    const val = Number(raw);
+                    if (!isNaN(val)) {
+                        barSum += val;
+                        hasVal = true;
+                    }
+                });
+                if (hasVal) {
+                    totalVal += barSum;
+                    validCount++;
                 }
-            });
-            if (hasVal) {
-                totalVal += barSum;
-                validCount++;
             }
         }
 
