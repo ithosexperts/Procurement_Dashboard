@@ -901,6 +901,31 @@ def _build_breakdown_datasets(
     return datasets
 
 
+def _strip_empty_periods(chart_data: dict[str, Any]) -> dict[str, Any]:
+    """Remove periods where every dataset has a zero value (FL7: no zero bars for empty periods)."""
+    labels = chart_data.get("labels") or []
+    datasets = chart_data.get("datasets") or []
+    meta = chart_data.get("meta") or []
+    if not labels or not datasets:
+        return chart_data
+
+    keep_indices = [
+        i for i in range(len(labels))
+        if any((ds.get("data") and i < len(ds["data"]) and ds["data"][i] != 0) for ds in datasets)
+    ]
+    if len(keep_indices) == len(labels):
+        return chart_data
+
+    return {
+        "labels": [labels[i] for i in keep_indices],
+        "datasets": [
+            {**ds, "data": [ds["data"][i] for i in keep_indices if i < len(ds.get("data", []))]}
+            for ds in datasets
+        ],
+        "meta": [meta[i] for i in keep_indices if i < len(meta)],
+    }
+
+
 def _compute_main_chart(
     df: pd.DataFrame,
     granularity: str,
@@ -910,11 +935,32 @@ def _compute_main_chart(
     breakdown_analysis: str | None = None,
 ) -> dict[str, Any]:
     """
-    Generate main vertical bar chart grouping according to Rules FL5, FL6, CH1, CH2,
+    Generate main vertical bar chart grouping according to Rules FL5, FL6, FL7, CH1, CH2,
     with cascading drill-down support: Year -> Month -> Week -> Date.
     When breakdown_analysis is a specific dimension (1–8), splits each period into
     per-category series for that dimension.
     """
+    return _strip_empty_periods(
+        _compute_main_chart_raw(
+            df=df,
+            granularity=granularity,
+            measure=measure,
+            date_basis=date_basis,
+            filters=filters,
+            breakdown_analysis=breakdown_analysis,
+        )
+    )
+
+
+def _compute_main_chart_raw(
+    df: pd.DataFrame,
+    granularity: str,
+    measure: str,
+    date_basis: str,
+    filters: dict[str, Any] | None = None,
+    breakdown_analysis: str | None = None,
+) -> dict[str, Any]:
+    """Internal main chart builder before FL7 empty-period stripping."""
     if df.empty:
         return {"labels": [], "datasets": [], "meta": []}
 
