@@ -2047,6 +2047,9 @@
                 if (cData && cData.datasets) {
                     cData.datasets.forEach(ds => {
                         if (!ds._isAverageLine && ds.type !== "line") {
+                            if (Array.isArray(ds.data)) {
+                                ds.data = ds.data.map(v => (v === 0 || v === 0.0) ? null : v);
+                            }
                             ds.minBarLength = isBreakdownActive ? 4 : 8;
                             if (ds.backgroundColor && ds.backgroundColor !== "#0F3B6C") {
                                 ds.hoverBackgroundColor = ds.backgroundColor;
@@ -3730,6 +3733,9 @@
         if (chartData && chartData.datasets) {
             chartData.datasets.forEach(ds => {
                 if (!ds._isAverageLine && ds.type !== "line") {
+                    if (Array.isArray(ds.data)) {
+                        ds.data = ds.data.map(v => (v === 0 || v === 0.0) ? null : v);
+                    }
                     ds.minBarLength = isBreakdownActive ? 4 : 8;
                     if (ds.backgroundColor && ds.backgroundColor !== "#0F3B6C") {
                         ds.hoverBackgroundColor = ds.backgroundColor;
