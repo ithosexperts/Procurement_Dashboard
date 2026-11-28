@@ -1409,11 +1409,11 @@ def _compute_top_vendors_chart(
     if VENDOR_COL not in df.columns or df.empty:
         return {"labels": [], "datasets": []}
 
-    # Vendors ranked by Quantity when measure == "Quantity", else by Spend
+    # Vendors ranked by Quantity when measure == "Quantity", else by Spend (observed=True excludes 0-row categories)
     if measure == "Quantity" and QTY_COL in df.columns:
-        vendor_ranking = df.groupby(VENDOR_COL, observed=False)[QTY_COL].sum().sort_values(ascending=False)
+        vendor_ranking = df.groupby(VENDOR_COL, observed=True)[QTY_COL].sum().sort_values(ascending=False)
     else:
-        vendor_ranking = df.groupby(VENDOR_COL, observed=False)[SPEND_COL].sum().sort_values(ascending=False)
+        vendor_ranking = df.groupby(VENDOR_COL, observed=True)[SPEND_COL].sum().sort_values(ascending=False)
     all_vendors = vendor_ranking.index.tolist()
 
     if limit and limit > 0:
